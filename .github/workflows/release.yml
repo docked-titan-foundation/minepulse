@@ -1,0 +1,38 @@
+---
+name: Release
+
+# Fires when semantic-release (in pipeline.yml) pushes a version tag. Builds the
+# multi-arch binary + distroless image, generates SBOMs, and cosign-signs them,
+# appending the artifacts to the GitHub Release semantic-release created.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-go@v6
+        with: { go-version: "1.23" }
+      - uses: ko-build/setup-ko@v0.9
+      - uses: sigstore/cosign-installer@v3
+      - name: Log in to ghcr
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KO_DOCKER_REPO: ghcr.io/docked-titan-foundation/minepulse

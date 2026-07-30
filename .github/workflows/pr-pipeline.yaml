@@ -1,0 +1,43 @@
+---
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main, beta]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.23"
+
+      - name: go vet + test
+        run: |
+          go vet ./...
+          go test -race ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.61.0
+
+      - name: build
+        run: go build -trimpath -o /dev/null .
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - run: npm install
+      - name: commitlint
+        run: |
+          npx commitlint \
+            --from "${{ github.event.pull_request.base.sha }}" \
+            --to "${{ github.event.pull_request.head.sha }}" \
+            --verbose

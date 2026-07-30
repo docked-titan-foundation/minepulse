@@ -1,0 +1,42 @@
+---
+name: Renovate
+
+# Self-hosted Renovate on a schedule (the org has no Mend app). Keeps Go modules
+# — client-go/api/apimachinery/metrics as one group, plus Bubble Tea/Lip Gloss —
+# GitHub Actions, and npm dev-deps current, opening PRs against `beta`.
+on:
+  schedule:
+    - cron: "0 * * * 1-5" # hourly, weekdays, UTC
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: Dry run
+        type: boolean
+        default: false
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with: { persist-credentials: false }
+      - uses: actions/create-github-app-token@v3
+        id: token
+        with:
+          client-id: ${{ secrets.RENOVATE_BOT_ID }}
+          private-key: ${{ secrets.RENOVATE_BOT_PRIVATE_KEY }}
+      - uses: renovatebot/github-action@v46.1.20
+        with:
+          configurationFile: renovate.json
+          token: ${{ steps.token.outputs.token }}
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
+          RENOVATE_PLATFORM_COMMIT: "enabled"
+          RENOVATE_DRY_RUN: ${{ inputs.dryRun && 'full' || '' }}

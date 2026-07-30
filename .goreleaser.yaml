@@ -1,0 +1,64 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: minepulse
+    main: .
+    binary: minepulse
+    env: [CGO_ENABLED=0]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+sboms:
+  - artifacts: archive
+
+# Multi-arch, distroless image built straight from Go (no Dockerfile), SBOM'd.
+kos:
+  - id: minepulse
+    build: minepulse
+    base_image: gcr.io/distroless/static:nonroot
+    repository: ghcr.io/docked-titan-foundation/minepulse
+    platforms: [linux/amd64, linux/arm64]
+    tags:
+      - "{{ .Version }}"
+      - latest
+    bare: true
+    sbom: spdx
+
+# Keyless cosign signatures (needs OIDC id-token in CI).
+signs:
+  - cmd: cosign
+    args:
+      - sign-blob
+      - "--yes"
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+    signature: "${artifact}.sig"
+    certificate: "${artifact}.pem"
+    artifacts: checksum
+    output: true
+
+docker_signs:
+  - cmd: cosign
+    args: ["sign", "--yes", "${artifact}"]
+    artifacts: all
+    output: true
+
+# semantic-release owns versioning, the changelog, and creating the GitHub
+# Release; goreleaser only appends the built artifacts to it.
+changelog:
+  disable: true
+
+release:
+  mode: append

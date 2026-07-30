@@ -1,0 +1,37 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "baseBranches": ["beta"],
+  "dependencyDashboard": true,
+  "labels": ["dependencies"],
+  "reviewers": ["albertoig"],
+  "assignees": ["albertoig"],
+  "minimumReleaseAge": "3 days",
+  "semanticCommits": "enabled",
+  "packageRules": [
+    {
+      "matchManagers": ["gomod"],
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "dependencies",
+      "addLabels": ["go"]
+    },
+    {
+      "description": "Pin the Kubernetes client libraries as one coherent set.",
+      "matchManagers": ["gomod"],
+      "matchPackageNames": ["k8s.io/client-go", "k8s.io/api", "k8s.io/apimachinery", "k8s.io/metrics"],
+      "groupName": "kubernetes client-go"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "dependencies",
+      "addLabels": ["github-actions"]
+    },
+    {
+      "matchManagers": ["npm"],
+      "semanticCommitType": "chore",
+      "semanticCommitScope": "dependencies",
+      "addLabels": ["npm"]
+    }
+  ]
+}

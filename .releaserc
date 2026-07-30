@@ -1,0 +1,29 @@
+{
+  "branches": ["main", { "name": "beta", "prerelease": true }],
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "releaseRules": [
+          { "type": "feat", "scope": "!(mp)", "release": false },
+          { "type": "fix", "scope": "!(mp)", "release": false },
+          { "type": "perf", "scope": "!(mp)", "release": false },
+          { "breaking": true, "release": "major" },
+          { "type": "feat", "scope": "mp", "release": "minor" },
+          { "type": "fix", "scope": "mp", "release": "patch" },
+          { "type": "perf", "scope": "mp", "release": "patch" }
+        ]
+      }
+    ],
+    "@semantic-release/release-notes-generator",
+    ["@semantic-release/changelog", { "changelogFile": "CHANGELOG.md" }],
+    "@semantic-release/github",
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["CHANGELOG.md", "package.json"],
+        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ]
+  ]
+}

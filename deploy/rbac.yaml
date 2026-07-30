@@ -1,0 +1,70 @@
+# Least-privilege, read-only RBAC for minepulse (Constitution II: observe, never
+# mutate). Grants exactly the reads the collectors perform and nothing else.
+#
+# minepulse normally runs locally with your kubeconfig — in that case these verbs
+# must be available to *your* user (they usually are for a cluster admin). Apply
+# this when you want a dedicated, minimal ServiceAccount instead (e.g. for the
+# future in-cluster deployment). Adjust the namespace to where the miner runs.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: minepulse
+  namespace: monero-idle-miner
+---
+# Namespaced reads: miner pods, their logs, and the pod HTTP API via proxy.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: minepulse-reader
+  namespace: monero-idle-miner
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log", "pods/proxy"]
+    verbs: ["get"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+# Cluster-scoped reads: node capacity and node CPU metrics.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: minepulse-node-reader
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: minepulse-reader
+  namespace: monero-idle-miner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: minepulse-reader
+subjects:
+  - kind: ServiceAccount
+    name: minepulse
+    namespace: monero-idle-miner
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: minepulse-node-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: minepulse-node-reader
+subjects:
+  - kind: ServiceAccount
+    name: minepulse
+    namespace: monero-idle-miner

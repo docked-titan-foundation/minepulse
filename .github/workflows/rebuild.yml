@@ -1,0 +1,59 @@
+---
+name: Rebuild
+
+# Weekly re-release of the latest tag: fresh CVE scan of the pinned deps, current
+# Sigstore transparency-log entries, and fresh SBOM/provenance. Deterministic
+# builds mean the bytes match; the signatures and scans are what we refresh.
+on:
+  schedule:
+    - cron: "0 3 * * 0" # Sundays 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to rebuild (default: latest stable)"
+        required: false
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - id: tag
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          [ -z "$TAG" ] && TAG=$(git tag --sort=-v:refname | grep -v -- '-' | head -1)
+          if [ -z "$TAG" ]; then
+            echo "::notice::no stable tag to rebuild yet — skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.tag.outputs.skip != 'true'
+        run: git checkout "${{ steps.tag.outputs.tag }}"
+      - if: steps.tag.outputs.skip != 'true'
+        uses: actions/setup-go@v6
+        with: { go-version: "1.23" }
+      - if: steps.tag.outputs.skip != 'true'
+        uses: ko-build/setup-ko@v0.9
+      - if: steps.tag.outputs.skip != 'true'
+        uses: sigstore/cosign-installer@v3
+      - if: steps.tag.outputs.skip != 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - if: steps.tag.outputs.skip != 'true'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KO_DOCKER_REPO: ghcr.io/docked-titan-foundation/minepulse

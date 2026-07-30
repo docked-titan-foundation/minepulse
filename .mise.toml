@@ -1,0 +1,38 @@
+[tools]
+go            = "1.23"
+golangci-lint = "1.61.0"
+goreleaser    = "2.4.4"
+cosign        = "2.4.1"
+syft          = "1.14.0"
+
+[env]
+REGISTRY   = "ghcr.io/docked-titan-foundation"
+BINARY     = "minepulse"
+# Local build version; the real version comes from semantic-release.
+VERSION    = "v0.0.0-local"
+
+# ── Build & test ──────────────────────────────────────────────────────────────
+[tasks.build]
+description = "Build the minepulse binary into bin/"
+run = "go build -trimpath -o bin/minepulse ."
+
+[tasks.run]
+description = "Run the mock TUI (no cluster needed)"
+run = "go run . watch --mock"
+
+[tasks.test]
+description = "Run the unit tests"
+run = "go test ./..."
+
+# ── Linting ───────────────────────────────────────────────────────────────────
+[tasks.lint]
+description = "Run all linters"
+depends = ["lint:go", "lint:vet"]
+
+[tasks."lint:go"]
+description = "golangci-lint"
+run = "golangci-lint run"
+
+[tasks."lint:vet"]
+description = "go vet"
+run = "go vet ./..."

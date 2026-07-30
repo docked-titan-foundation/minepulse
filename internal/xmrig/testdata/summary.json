@@ -1,0 +1,34 @@
+{
+  "id": "6f8d1c2b3a4e5f60",
+  "worker_id": "homelab-andromeda",
+  "version": "6.20.0",
+  "kind": "miner",
+  "ua": "XMRig/6.20.0 (Linux x86_64)",
+  "cpu": {
+    "brand": "Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz",
+    "aes": true,
+    "threads": 8,
+    "cores": 4,
+    "nodes": 1
+  },
+  "hashrate": {
+    "total": [376.61, 371.02, null],
+    "highest": 402.15
+  },
+  "results": {
+    "diff_current": 500001,
+    "shares_good": 42,
+    "shares_total": 44,
+    "avg_time": 31,
+    "hashes_total": 18446744
+  },
+  "connection": {
+    "pool": "pool.supportxmr.com:443",
+    "ip": "116.202.180.221",
+    "uptime": 5231,
+    "ping": 27,
+    "failures": 0,
+    "tls": "TLSv1.3",
+    "error_log": []
+  }
+}

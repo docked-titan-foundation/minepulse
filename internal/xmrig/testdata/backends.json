@@ -1,0 +1,25 @@
+[
+  {
+    "type": "cpu",
+    "enabled": true,
+    "algo": "rx/0",
+    "profile": "rx",
+    "hw-aes": true,
+    "threads": [
+      { "intensity": 1, "affinity": 0 },
+      { "intensity": 1, "affinity": 1 },
+      { "intensity": 1, "affinity": 2 },
+      { "intensity": 1, "affinity": 3 },
+      { "intensity": 1, "affinity": 4 },
+      { "intensity": 1, "affinity": 5 }
+    ]
+  },
+  {
+    "type": "opencl",
+    "enabled": false
+  },
+  {
+    "type": "cuda",
+    "enabled": false
+  }
+]

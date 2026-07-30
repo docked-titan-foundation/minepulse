@@ -1,0 +1,20 @@
+{
+  "name": "minepulse",
+  "version": "0.0.0",
+  "description": "Live terminal scope for Monero mining across a Kubernetes cluster",
+  "private": true,
+  "devDependencies": {
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
+    "@semantic-release/changelog": "^6.0.0",
+    "@semantic-release/commit-analyzer": "^13.0.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.8",
+    "@semantic-release/release-notes-generator": "^14.1.1",
+    "semantic-release": "^25.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/docked-titan-foundation/minepulse.git"
+  }
+}
