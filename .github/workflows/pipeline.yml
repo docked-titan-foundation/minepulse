@@ -37,6 +37,7 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      actions: write
     steps:
       - uses: actions/create-github-app-token@v3
         id: token
@@ -51,7 +52,19 @@ jobs:
         with: { node-version: "24" }
       - run: npm install
       - name: semantic-release
+        id: sr
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
           GITHUB_TOKEN: ${{ steps.token.outputs.token }}
-        run: npx semantic-release
+        run: |
+          set -o pipefail
+          npx semantic-release 2>&1 | tee /tmp/sr.log
+          VER=$(grep -oP 'Published release \K[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?' /tmp/sr.log | head -1 || true)
+          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+      # A tag pushed by the bot does not reliably trigger release.yml's tag-push,
+      # so dispatch the build explicitly when a release was actually published.
+      - name: Trigger the Release build
+        if: steps.sr.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: gh workflow run release.yml --repo "${{ github.repository }}" -f tag="v${{ steps.sr.outputs.version }}"
