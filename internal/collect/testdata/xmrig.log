@@ -1,0 +1,9 @@
+ * ABOUT        XMRig/6.20.0 gcc/9.5.0
+ * CPU          Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz (1) 64-bit AES
+ * DONATE       0%
+ * POOL #1      pool.supportxmr.com:443 algo rx/0
+[2026-07-30 04:10:01.123]  net      use pool pool.supportxmr.com:443 116.202.180.221
+[2026-07-30 04:10:01.550]  net      new job from pool.supportxmr.com:443 diff 500001 algo rx/0 height 3210000
+[2026-07-30 04:10:02.001]  cpu      READY threads 6/8 (6) huge pages 100% 6/6 memory 6144 KB
+[2026-07-30 04:11:33.900]  cpu      accepted (42/44) diff 500001 (27 ms)
+[2026-07-30 04:12:00.000]  miner    speed 10s/60s/15m 376.6 371.0 n/a H/s max 402.1 H/s
