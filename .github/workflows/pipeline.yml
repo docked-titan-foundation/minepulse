@@ -50,12 +50,39 @@ jobs:
           token: ${{ steps.token.outputs.token }}
       - uses: actions/setup-node@v6
         with: { node-version: "24" }
+
+      # Sign the version commit-back with the release bot's GPG key so it shows
+      # "Verified" on GitHub, authored as s-release[bot] (mirrors ckpool /
+      # bitcoin-stack).
+      - name: Import the release bot's GPG key
+        env:
+          TITAN_RELEASER_BASE64_GPG_KEY: ${{ secrets.TITAN_RELEASER_BASE64_GPG_KEY }}
+        run: echo -n "$TITAN_RELEASER_BASE64_GPG_KEY" | base64 --decode | gpg --batch --import
+
+      - name: Configure signed commits
+        env:
+          TITAN_RELEASER_GPG_KEY_ID: ${{ secrets.TITAN_RELEASER_GPG_KEY_ID }}
+        run: |
+          cat > /tmp/gpg.sh <<'EOF'
+          #!/bin/bash
+          gpg --batch --pinentry-mode loopback \
+              --passphrase "$TITAN_RELEASER_GPG_PASSPHRASE" "$@"
+          EOF
+          chmod +x /tmp/gpg.sh
+          git config commit.gpgsign true
+          git config user.signingkey "$TITAN_RELEASER_GPG_KEY_ID"
+          git config gpg.program /tmp/gpg.sh
+
       - run: npm install
       - name: semantic-release
         id: sr
         env:
+          TITAN_RELEASER_GPG_PASSPHRASE: ${{ secrets.TITAN_RELEASER_GPG_PASSPHRASE }}
           GH_TOKEN: ${{ steps.token.outputs.token }}
-          GITHUB_TOKEN: ${{ steps.token.outputs.token }}
+          GIT_AUTHOR_NAME: s-release[bot]
+          GIT_AUTHOR_EMAIL: ${{ secrets.TITAN_RELEASER_EMAIL }}
+          GIT_COMMITTER_NAME: s-release[bot]
+          GIT_COMMITTER_EMAIL: ${{ secrets.TITAN_RELEASER_EMAIL }}
         run: |
           set -o pipefail
           npx semantic-release 2>&1 | tee /tmp/sr.log
