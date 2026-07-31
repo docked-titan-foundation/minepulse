@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/docked-titan-foundation/minepulse/compare/v1.0.0...v1.1.0) (2026-07-31)
+
+
+### Features
+
+* **mp:** add curl | sh install script ([0622861](https://github.com/docked-titan-foundation/minepulse/commit/0622861c049b9d29aca1997124b7cd025d11993f)), closes [#2](https://github.com/docked-titan-foundation/minepulse/issues/2) [#3](https://github.com/docked-titan-foundation/minepulse/issues/3) [#4](https://github.com/docked-titan-foundation/minepulse/issues/4) [#5](https://github.com/docked-titan-foundation/minepulse/issues/5)
+
 # 1.0.0 (2026-07-30)
 
 
