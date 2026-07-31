@@ -108,11 +108,22 @@ var (
 	warnSt    = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
 	badSt     = lipgloss.NewStyle().Foreground(lipgloss.Color("203"))
 	sparkSt   = lipgloss.NewStyle().Foreground(xmrOrange)
+	boxSt     = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("240")).
+			Padding(0, 1)
 )
 
 func (m tuiModel) View() string {
 	var b strings.Builder
+	b.WriteString(m.title() + "\n")
+	b.WriteString(m.box(m.body()))
+	b.WriteString(footer())
+	return b.String()
+}
 
+// title is the banner above the box: name, last update, pause state.
+func (m tuiModel) title() string {
 	status := ""
 	if m.paused {
 		status = warnSt.Render(" [paused]")
@@ -121,17 +132,31 @@ func (m tuiModel) View() string {
 	if !m.updated.IsZero() {
 		upd = m.updated.Format("15:04:05")
 	}
-	fmt.Fprintf(&b, "%s  %s%s\n\n",
+	return fmt.Sprintf("%s  %s%s",
 		titleSt.Render("⛏  minepulse"),
 		dimStyle.Render("updated "+upd),
 		status)
+}
+
+// box frames the body, widening to the terminal when the content allows it.
+func (m tuiModel) box(body string) string {
+	st := boxSt
+	// Border + padding cost 4 columns; only stretch when nothing would wrap.
+	if avail := m.w - 4; avail > 0 && avail >= lipgloss.Width(body) {
+		st = st.Width(avail)
+	}
+	return st.Render(body)
+}
+
+// body is everything inside the box: cluster totals, gauge, nodes, pool, warnings.
+func (m tuiModel) body() string {
+	var b strings.Builder
 
 	if m.err != nil {
 		b.WriteString(badSt.Render("error: "+m.err.Error()) + "\n")
 	}
 	if m.snap == nil {
-		b.WriteString(dimStyle.Render("gathering…\n"))
-		b.WriteString(footer())
+		b.WriteString(dimStyle.Render("gathering…"))
 		return b.String()
 	}
 	s := m.snap
@@ -144,10 +169,10 @@ func (m tuiModel) View() string {
 		Hashrate(c.TotalHashrate),
 		fmt.Sprintf("%d", c.AcceptedShares),
 		fmt.Sprintf("%dm", c.MinerCPUMilli))
-	b.WriteString("\n  " + gauge("node CPU free", c.NodeCPUFreePct, 24) + "\n\n")
+	b.WriteString("\n" + gauge("node CPU free", c.NodeCPUFreePct, 24) + "\n\n")
 
 	// Node table.
-	fmt.Fprintf(&b, "  %-12s %-14s %11s %6s %10s %8s %6s  %-14s %s\n",
+	fmt.Fprintf(&b, "%-12s %-14s %11s %6s %10s %8s %6s  %-14s %s\n",
 		"NODE", "STATE", "HASH/60s", "THR", "SHARES", "MINER", "FREE", "CPU-FREE ~2m", "POOL")
 	for i := range s.Nodes {
 		b.WriteString(renderNodeRow(s.Nodes[i]))
@@ -167,8 +192,7 @@ func (m tuiModel) View() string {
 	for _, w := range s.Warnings {
 		b.WriteString(warnSt.Render("! "+w) + "\n")
 	}
-	b.WriteString(footer())
-	return b.String()
+	return strings.TrimRight(b.String(), "\n")
 }
 
 func renderNodeRow(n model.NodeStatus) string {
@@ -208,7 +232,7 @@ func renderNodeRow(n model.NodeStatus) string {
 	}
 
 	// NODE STATE HASH THR SHARES MINER FREE SPARK POOL
-	return fmt.Sprintf("  %-12s %-14s %11s %6s %10s %8s %6s  %s %s\n",
+	return fmt.Sprintf("%-12s %-14s %11s %6s %10s %8s %6s  %s %s\n",
 		truncate(n.Node, 12), padStyled(stateStyled, 14),
 		hash, thr, shares, miner, free, spark, pool)
 }
