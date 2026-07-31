@@ -37,7 +37,8 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-      actions: write
+      packages: write
+      id-token: write
     steps:
       - uses: actions/create-github-app-token@v3
         id: token
@@ -88,10 +89,33 @@ jobs:
           npx semantic-release 2>&1 | tee /tmp/sr.log
           VER=$(grep -oP 'Published release \K[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?' /tmp/sr.log | head -1 || true)
           echo "version=${VER}" >> "$GITHUB_OUTPUT"
-      # A tag pushed by the bot does not reliably trigger release.yml's tag-push,
-      # so dispatch the build explicitly when a release was actually published.
-      - name: Trigger the Release build
+      # Build, sign, and publish the artifacts inline when a release was actually
+      # published. semantic-release has just created and pushed the tag, so
+      # goreleaser derives the version from it. (Done here rather than via a
+      # cross-workflow dispatch, which the app token can't trigger.)
+      - name: Set up Go
         if: steps.sr.outputs.version != ''
+        uses: actions/setup-go@v6
+        with: { go-version: "1.23" }
+      - if: steps.sr.outputs.version != ''
+        uses: ko-build/setup-ko@v0.9
+      - if: steps.sr.outputs.version != ''
+        uses: sigstore/cosign-installer@v3
+      - if: steps.sr.outputs.version != ''
+        uses: anchore/sbom-action/download-syft@v0
+      - name: Log in to ghcr
+        if: steps.sr.outputs.version != ''
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: GoReleaser
+        if: steps.sr.outputs.version != ''
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
         env:
-          GH_TOKEN: ${{ steps.token.outputs.token }}
-        run: gh workflow run release.yml --repo "${{ github.repository }}" -f tag="v${{ steps.sr.outputs.version }}"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KO_DOCKER_REPO: ghcr.io/docked-titan-foundation/minepulse
