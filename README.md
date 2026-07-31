@@ -39,11 +39,23 @@ It never changes anything it observes — only reads (`get`/`list`/`watch`, `pod
 
 ## Install
 
+**Install script** (Linux/macOS, no toolchain — fetches the signed binary from Releases and verifies its checksum):
+
 ```bash
-# from source (Go 1.23+)
-go install github.com/docked-titan-foundation/minepulse@latest
-# or grab a signed binary from Releases, or run the container image
+curl -fsSL https://raw.githubusercontent.com/docked-titan-foundation/minepulse/main/install.sh | sh
 ```
+
+Pin a version or change the target dir with env vars: `VERSION=v1.0.0 BINDIR=~/.local/bin sh -c "$(curl -fsSL …/install.sh)"`.
+
+**Other options:**
+
+```bash
+go install github.com/docked-titan-foundation/minepulse@latest        # needs a Go toolchain
+docker run --rm ghcr.io/docked-titan-foundation/minepulse:latest --version   # container image
+# or download a signed binary directly from the Releases page
+```
+
+More install channels are on the roadmap — Homebrew ([#2](https://github.com/docked-titan-foundation/minepulse/issues/2)), Linux packages ([#3](https://github.com/docked-titan-foundation/minepulse/issues/3)), Scoop ([#4](https://github.com/docked-titan-foundation/minepulse/issues/4)).
 
 ## Use
 
