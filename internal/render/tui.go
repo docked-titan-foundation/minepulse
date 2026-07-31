@@ -121,7 +121,7 @@ func (m tuiModel) View() string {
 	if !m.updated.IsZero() {
 		upd = m.updated.Format("15:04:05")
 	}
-	fmt.Fprintf(&b, "%s  %s%s\n",
+	fmt.Fprintf(&b, "%s  %s%s\n\n",
 		titleSt.Render("⛏  minepulse"),
 		dimStyle.Render("updated "+upd),
 		status)
@@ -144,7 +144,7 @@ func (m tuiModel) View() string {
 		Hashrate(c.TotalHashrate),
 		fmt.Sprintf("%d", c.AcceptedShares),
 		fmt.Sprintf("%dm", c.MinerCPUMilli))
-	b.WriteString("  " + gauge("node CPU free", c.NodeCPUFreePct, 24) + "\n\n")
+	b.WriteString("\n  " + gauge("node CPU free", c.NodeCPUFreePct, 24) + "\n\n")
 
 	// Node table.
 	fmt.Fprintf(&b, "  %-12s %-14s %11s %6s %10s %8s %6s  %-14s %s\n",
