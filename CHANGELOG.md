@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/docked-titan-foundation/minepulse/compare/v1.2.0...v1.3.0) (2026-08-01)
+
+
+### Features
+
+* **mp:** choose the starting tab with -t/--tab ([6b1d52f](https://github.com/docked-titan-foundation/minepulse/commit/6b1d52f9a32914d269c452a3eaae353be09558ab)), closes [#f7931a](https://github.com/docked-titan-foundation/minepulse/issues/f7931a)
+
 # [1.2.0](https://github.com/docked-titan-foundation/minepulse/compare/v1.1.0...v1.2.0) (2026-08-01)
 
 
