@@ -3,3 +3,9 @@ dist/
 *.log
 # …but test fixtures under testdata/ are committed.
 !**/testdata/*.log
+
+# semantic-release's own dependencies. The release job installs them and then
+# runs goreleaser in the same working tree, and goreleaser refuses to build from
+# a dirty tree — so these must never show up as untracked files.
+node_modules/
+package-lock.json
