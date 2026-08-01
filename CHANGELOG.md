@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/docked-titan-foundation/minepulse/compare/v1.1.0...v1.2.0) (2026-08-01)
+
+
+### Features
+
+* **mp:** add a bitcoin tab for the cluster's solo pool ([e440f53](https://github.com/docked-titan-foundation/minepulse/commit/e440f53bbf6356116b99c71b2727ab9a5393e0bd))
+
 # [1.1.0](https://github.com/docked-titan-foundation/minepulse/compare/v1.0.0...v1.1.0) (2026-07-31)
 
 
