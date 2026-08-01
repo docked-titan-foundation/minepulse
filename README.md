@@ -84,13 +84,21 @@ of text blocks when piped or backgrounded, or line-delimited **json**. Force it 
 `-o tui|stream|json`.
 
 Common flags: `-n/--namespace`, `--selector`, `--interval` (default `3s`),
-`--wallet` (else auto-detected from the miner), `--no-pool`,
+`-t/--tab monero|bitcoin`, `--wallet` (else auto-detected from the miner), `--no-pool`,
 `--xmrig-api auto|on|off`, `--kubeconfig`, `--context`.
 
 ### The bitcoin tab
 
 Keys: **`m`** monero · **`b`** bitcoin · **`tab`** toggles. Both coins refresh every
 tick, so switching never shows staler data — and never triggers a fetch.
+
+Open straight onto a coin with `-t/--tab` (default `monero`); the keys still work from
+there, so it only chooses where you start:
+
+```bash
+minepulse watch --tab bitcoin      # start on the Bitcoin tab
+minepulse watch -t monero          # the default, stated explicitly
+```
 
 minepulse finds the pool itself: it lists pods, recognises **public-pool** and **ckpool**
 by their container image, and reads whatever that implementation exposes. What you get

@@ -50,6 +50,7 @@ func init() {
 	pf.StringVar(&cfg.Selector, "selector", cfg.Selector, "label selector for miner pods")
 	pf.DurationVar(&cfg.Interval, "interval", cfg.Interval, "refresh interval")
 	pf.StringVarP((*string)(&cfg.Output), "output", "o", string(cfg.Output), "output: tui|stream|json")
+	pf.StringVarP((*string)(&cfg.Tab), "tab", "t", string(cfg.Tab), "coin the dashboard opens on: monero|bitcoin")
 	pf.StringVar(&cfg.Kubeconfig, "kubeconfig", "", "path to kubeconfig (default: env/well-known)")
 	pf.StringVar(&cfg.Context, "context", "", "kubeconfig context to use")
 	pf.StringVar(&cfg.Wallet, "wallet", "", "XMR address for the pool panel (default: auto-detect from the miner)")

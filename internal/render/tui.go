@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/docked-titan-foundation/minepulse/internal/config"
 	"github.com/docked-titan-foundation/minepulse/internal/model"
 )
 
@@ -16,8 +17,9 @@ import (
 type GatherFunc func(ctx context.Context) (*model.Snapshot, error)
 
 // RunTUI runs the interactive dashboard until the user quits or ctx is canceled.
-func RunTUI(ctx context.Context, interval time.Duration, gather GatherFunc) error {
-	m := tuiModel{gather: gather, interval: interval, ctx: ctx}
+// tab is the coin it opens on; m/b still switch freely once it is running.
+func RunTUI(ctx context.Context, interval time.Duration, tab config.Tab, gather GatherFunc) error {
+	m := tuiModel{gather: gather, interval: interval, ctx: ctx, tab: tabFor(tab)}
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	go func() {
 		<-ctx.Done()
@@ -41,6 +43,15 @@ const (
 	tabMonero coinTab = iota
 	tabBitcoin
 )
+
+// tabFor maps the configured coin onto the view's tab. An unknown value falls
+// back to Monero; the command layer has already rejected it by this point.
+func tabFor(t config.Tab) coinTab {
+	if t == config.TabBitcoin {
+		return tabBitcoin
+	}
+	return tabMonero
+}
 
 type tuiModel struct {
 	gather    GatherFunc
@@ -132,6 +143,9 @@ var (
 	badSt     = lipgloss.NewStyle().Foreground(lipgloss.Color("203"))
 	sparkSt   = lipgloss.NewStyle().Foreground(xmrOrange)
 	tabOnSt   = lipgloss.NewStyle().Foreground(lipgloss.Color("252")).Bold(true)
+	btcOrange = lipgloss.Color("#f7931a")
+	xmrIconSt = lipgloss.NewStyle().Foreground(xmrOrange)
+	btcIconSt = lipgloss.NewStyle().Foreground(btcOrange)
 	boxSt     = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("240")).
@@ -140,22 +154,34 @@ var (
 
 func (m tuiModel) View() string {
 	var b strings.Builder
-	b.WriteString(m.title() + "\n")
+	b.WriteString(m.title() + "\n\n")
 	b.WriteString(m.tabs() + "\n")
 	b.WriteString(m.box(m.body()))
 	b.WriteString(footer())
 	return b.String()
 }
 
+// Coin marks for the tab strip: Monero's ɱ (U+0271) and Bitcoin's ₿ (U+20BF).
+// Both are single-width glyphs in a terminal font, so they cost one column and
+// leave the strip's alignment alone.
+const (
+	xmrIcon = "ɱ"
+	btcIcon = "₿"
+)
+
 // tabs is the strip above the box naming the two coins, active one highlighted.
+// Each coin's mark keeps its own color whether or not its tab is selected, so
+// the strip reads at a glance; only the label dims.
 func (m tuiModel) tabs() string {
-	name := func(label string, t coinTab) string {
+	name := func(icon, label string, iconSt lipgloss.Style, t coinTab) string {
 		if m.tab == t {
-			return tabOnSt.Render("[" + label + "]")
+			return tabOnSt.Render("[") + iconSt.Bold(true).Render(icon) +
+				tabOnSt.Render(" "+label+"]")
 		}
-		return dimStyle.Render(" " + label + " ")
+		return " " + iconSt.Render(icon) + dimStyle.Render(" "+label+" ")
 	}
-	return " " + name("monero", tabMonero) + "  " + name("bitcoin", tabBitcoin)
+	return " " + name(xmrIcon, "monero", xmrIconSt, tabMonero) +
+		"  " + name(btcIcon, "bitcoin", btcIconSt, tabBitcoin)
 }
 
 // title is the banner above the box: name, last update, pause state.

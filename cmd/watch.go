@@ -22,6 +22,9 @@ var watchCmd = &cobra.Command{
 		if err := validateOutput(cfg.Output); err != nil {
 			return err
 		}
+		if err := validateTab(cfg.Tab); err != nil {
+			return err
+		}
 		src, err := collect.New(cfg)
 		if err != nil {
 			return err
@@ -31,9 +34,9 @@ var watchCmd = &cobra.Command{
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 
-		// Interactive full-screen dashboard.
+		// Interactive full-screen dashboard, opening on the requested coin.
 		if cfg.Output == config.OutputTUI {
-			return render.RunTUI(ctx, cfg.Interval, src.Gather)
+			return render.RunTUI(ctx, cfg.Interval, cfg.Tab, src.Gather)
 		}
 
 		// Non-interactive: emit a snapshot per tick.

@@ -116,7 +116,8 @@ Bitcoin block is printed.
 ### Functional Requirements
 
 - **FR-001**: The dashboard MUST present its content in a single framed box, with the tool title and update status outside that box (already delivered; the tab strip joins them).
-- **FR-002**: The dashboard MUST offer exactly two tabs — Monero and Bitcoin — with a visible strip marking which is active, and MUST start on Monero.
+- **FR-002**: The dashboard MUST offer exactly two tabs — Monero and Bitcoin — with a visible strip marking which is active and carrying each coin's mark, and MUST start on Monero unless the operator names another starting tab.
+- **FR-002a**: The operator MUST be able to choose which tab the dashboard opens on from the command line, with an invalid choice rejected before any cluster call; the switch keys keep working from there, so the setting decides only where the session starts.
 - **FR-003**: `m` MUST select the Monero tab and `b` the Bitcoin tab; existing keys (`q`, `p`, `r`) MUST keep their meaning on both tabs.
 - **FR-004**: Switching tabs MUST NOT trigger a gather, change the refresh interval, or alter pause state — it only changes what is drawn.
 - **FR-005**: Each refresh MUST gather both coins, so a tab shows data as fresh as the update timestamp claims.

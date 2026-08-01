@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/docked-titan-foundation/minepulse/internal/config"
 	"github.com/docked-titan-foundation/minepulse/internal/model"
 )
 
@@ -70,6 +71,10 @@ func TestTUITabsSwitchBodyOnly(t *testing.T) {
 	if !strings.Contains(monero, "monero") || !strings.Contains(monero, "bitcoin") {
 		t.Errorf("tab strip missing\n---\n%s", monero)
 	}
+	// Each coin's mark is on its tab whichever tab is active.
+	if !strings.Contains(monero, xmrIcon) || !strings.Contains(monero, btcIcon) {
+		t.Errorf("tab strip must carry both coin icons\n---\n%s", monero)
+	}
 	if !strings.Contains(monero, "andromeda") {
 		t.Errorf("Monero tab must show the node table\n---\n%s", monero)
 	}
@@ -101,6 +106,27 @@ func TestTUITabsSwitchBodyOnly(t *testing.T) {
 	toggled, _ := bm.Update(tea.KeyMsg{Type: tea.KeyTab})
 	if toggled.(tuiModel).tab != tabMonero {
 		t.Error("tab key must toggle back to Monero")
+	}
+}
+
+// --tab picks the coin the dashboard opens on; the keys still work from there.
+func TestTabForOpensOnConfiguredCoin(t *testing.T) {
+	if got := tabFor(config.TabBitcoin); got != tabBitcoin {
+		t.Errorf("tabFor(bitcoin) = %v, want bitcoin", got)
+	}
+	if got := tabFor(config.TabMonero); got != tabMonero {
+		t.Errorf("tabFor(monero) = %v, want monero", got)
+	}
+	// The command layer rejects unknown values; the view still refuses to panic.
+	if got := tabFor(config.Tab("dogecoin")); got != tabMonero {
+		t.Errorf("tabFor(unknown) = %v, want monero", got)
+	}
+
+	snap := sampleSnapshot()
+	snap.Bitcoin = &model.BitcoinView{Scope: "all namespaces", Pools: []model.BitcoinPool{addressPool()}}
+	m := tuiModel{snap: snap, updated: time.Now(), tab: tabFor(config.TabBitcoin)}
+	if out := m.View(); !strings.Contains(out, "ckpool") {
+		t.Errorf("opening on bitcoin must render the Bitcoin body\n---\n%s", out)
 	}
 }
 

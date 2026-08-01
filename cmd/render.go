@@ -30,3 +30,13 @@ func validateOutput(out config.Output) error {
 		return fmt.Errorf("invalid --output %q (want tui|stream|json)", out)
 	}
 }
+
+// validateTab rejects an unknown --tab value.
+func validateTab(tab config.Tab) error {
+	switch tab {
+	case config.TabMonero, config.TabBitcoin:
+		return nil
+	default:
+		return fmt.Errorf("invalid --tab %q (want monero|bitcoin)", tab)
+	}
+}

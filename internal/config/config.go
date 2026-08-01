@@ -12,6 +12,14 @@ const (
 	OutputJSON   Output = "json"   // one JSON snapshot per line (jsonl)
 )
 
+// Tab selects which coin the dashboard opens on.
+type Tab string
+
+const (
+	TabMonero  Tab = "monero"
+	TabBitcoin Tab = "bitcoin"
+)
+
 // XMRigAPIMode controls the miner-stats data source.
 type XMRigAPIMode string
 
@@ -27,6 +35,7 @@ type Config struct {
 	Selector   string
 	Interval   time.Duration
 	Output     Output
+	Tab        Tab // which coin the TUI opens on
 	Kubeconfig string
 	Context    string
 	Wallet     string // empty = auto-detect from the miner
@@ -51,6 +60,7 @@ func Defaults() Config {
 		Selector:   "app.kubernetes.io/name=monero-idle-miner",
 		Interval:   3 * time.Second,
 		Output:     OutputTUI,
+		Tab:        TabMonero,
 		PoolAPIURL: "https://supportxmr.com/api",
 		XMRigAPI:   XMRigAuto,
 	}

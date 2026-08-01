@@ -8,6 +8,7 @@ changes meaning (FR-015).
 
 | Flag | Default | Meaning |
 |---|---|---|
+| `-t`, `--tab` | `monero` | Which coin the dashboard opens on (`monero`\|`bitcoin`). An unknown value is rejected before any cluster call. Keys still switch freely once running |
 | `--btc-namespace` | *(empty = search every namespace the credentials allow)* | Restrict pool discovery to one namespace |
 | `--btc-selector` | *(empty)* | Extra label selector for pool discovery; ANDed with the fingerprint check, never replacing it |
 | `--btc-address` | *(empty)* | Payout address used for per-device rows on public-pool. Unset ⇒ pool-wide totals only |
