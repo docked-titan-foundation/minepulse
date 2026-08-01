@@ -33,6 +33,15 @@ type snapMsg struct {
 	err  error
 }
 
+// coinTab is which view the box shows. It is pure UI state: both coins are
+// gathered every tick, so switching costs nothing and shows nothing staler.
+type coinTab int
+
+const (
+	tabMonero coinTab = iota
+	tabBitcoin
+)
+
 type tuiModel struct {
 	gather    GatherFunc
 	interval  time.Duration
@@ -42,6 +51,7 @@ type tuiModel struct {
 	w, h      int
 	paused    bool
 	gathering bool
+	tab       coinTab
 	updated   time.Time
 }
 
@@ -76,6 +86,19 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.gatherCmd()
 			}
 			return m, nil
+		case "m":
+			m.tab = tabMonero
+			return m, nil
+		case "b":
+			m.tab = tabBitcoin
+			return m, nil
+		case "tab":
+			if m.tab == tabMonero {
+				m.tab = tabBitcoin
+			} else {
+				m.tab = tabMonero
+			}
+			return m, nil
 		}
 	case tickMsg:
 		cmds := []tea.Cmd{tickCmd(m.interval)}
@@ -108,6 +131,7 @@ var (
 	warnSt    = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
 	badSt     = lipgloss.NewStyle().Foreground(lipgloss.Color("203"))
 	sparkSt   = lipgloss.NewStyle().Foreground(xmrOrange)
+	tabOnSt   = lipgloss.NewStyle().Foreground(lipgloss.Color("252")).Bold(true)
 	boxSt     = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("240")).
@@ -117,9 +141,21 @@ var (
 func (m tuiModel) View() string {
 	var b strings.Builder
 	b.WriteString(m.title() + "\n")
+	b.WriteString(m.tabs() + "\n")
 	b.WriteString(m.box(m.body()))
 	b.WriteString(footer())
 	return b.String()
+}
+
+// tabs is the strip above the box naming the two coins, active one highlighted.
+func (m tuiModel) tabs() string {
+	name := func(label string, t coinTab) string {
+		if m.tab == t {
+			return tabOnSt.Render("[" + label + "]")
+		}
+		return dimStyle.Render(" " + label + " ")
+	}
+	return " " + name("monero", tabMonero) + "  " + name("bitcoin", tabBitcoin)
 }
 
 // title is the banner above the box: name, last update, pause state.
@@ -148,7 +184,7 @@ func (m tuiModel) box(body string) string {
 	return st.Render(body)
 }
 
-// body is everything inside the box: cluster totals, gauge, nodes, pool, warnings.
+// body is the active tab's content.
 func (m tuiModel) body() string {
 	var b strings.Builder
 
@@ -159,6 +195,16 @@ func (m tuiModel) body() string {
 		b.WriteString(dimStyle.Render("gathering…"))
 		return b.String()
 	}
+	if m.tab == tabBitcoin {
+		b.WriteString(bitcoinBody(m.snap.Bitcoin))
+		return strings.TrimRight(b.String(), "\n")
+	}
+	return b.String() + m.moneroBody()
+}
+
+// moneroBody is the Monero tab: cluster totals, gauge, nodes, pool, warnings.
+func (m tuiModel) moneroBody() string {
+	var b strings.Builder
 	s := m.snap
 	c := s.Cluster
 
@@ -259,7 +305,7 @@ func gauge(label string, pct float64, width int) string {
 }
 
 func footer() string {
-	return "\n" + dimStyle.Render("q quit · p pause · r refresh")
+	return "\n" + dimStyle.Render("q quit · p pause · r refresh · m/b coin")
 }
 
 // ── small width helpers (styled strings break %-Ns padding) ──────────────────

@@ -3,7 +3,10 @@
 // unit-testable (Constitution IV).
 package diag
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // CheckStatus is the outcome of a single check.
 type CheckStatus string
@@ -62,6 +65,49 @@ func (r *Report) Failed() bool { return r.Worst() == StatusFail }
 // apiRemedy is the actionable fix for a disabled/unreachable XMRig HTTP API.
 const apiRemedy = "Enable it: set `httpApi.enabled: true` on the monero-idle-miner chart " +
 	"(binds pod-internally, restricted). Until then minepulse reads stats from logs (reduced fidelity)."
+
+// BitcoinCheck classifies what Bitcoin pool discovery found. Pure, so the
+// interesting cases — a pool that is present but publishes nothing, and a search
+// the credentials could not complete — are tested directly.
+//
+// No pool is INFO, not a warning: plenty of clusters mine only Monero, and
+// doctor must not fail an exit code over an absent optional feature.
+func BitcoinCheck(scope string, pools []BitcoinPoolResult, skipped bool, searchWarn string) Check {
+	const name = "bitcoin pool"
+	switch {
+	case skipped:
+		return Check{name, StatusInfo, "skipped (--no-btc)", ""}
+	case searchWarn != "":
+		return Check{name, StatusWarn, searchWarn,
+			"Grant read access to pods across namespaces (see deploy/rbac.yaml), or pass --btc-namespace."}
+	case len(pools) == 0:
+		return Check{name, StatusInfo, "none found in " + scope,
+			"If you run one, check --btc-namespace/--btc-selector; minepulse matches public-pool and ckpool images."}
+	}
+
+	var details, remedies []string
+	status := StatusOK
+	for _, p := range pools {
+		if p.HasStats {
+			details = append(details, fmt.Sprintf("%s: stats via %s", p.Where, p.Source))
+			continue
+		}
+		status = StatusWarn
+		details = append(details, p.Where+": no readable stats")
+		if p.Remedy != "" {
+			remedies = append(remedies, p.Remedy)
+		}
+	}
+	return Check{name, status, strings.Join(details, "; "), strings.Join(remedies, " · ")}
+}
+
+// BitcoinPoolResult is one detected pool, reduced to what the check classifies.
+type BitcoinPoolResult struct {
+	Where    string // "ckpool in bitcoin/mining-pool-xyz"
+	Source   string // "api", "logs", "none"
+	HasStats bool
+	Remedy   string
+}
 
 // APIReachabilityCheck classifies XMRig HTTP API reachability across the running
 // miners. It is pure so the P1 behavior (warn + recommend enabling) is tested

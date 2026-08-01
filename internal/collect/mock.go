@@ -15,13 +15,15 @@ import (
 // fallback and one crash-looping node, with CPU that random-walks so the
 // sparklines move.
 type mockSource struct {
-	rng      *rand.Rand
-	nodes    []*mockNode
-	wallet   string
-	noPool   bool
-	poolPaid float64
-	poolDue  float64
-	tick     int
+	rng       *rand.Rand
+	nodes     []*mockNode
+	wallet    string
+	noPool    bool
+	noBTC     bool
+	poolPaid  float64
+	poolDue   float64
+	btcShares float64
+	tick      int
 }
 
 type mockNode struct {
@@ -61,6 +63,7 @@ func NewMock(cfg config.Config) Source {
 		rng:      rng,
 		wallet:   "47mbhuNjTTUWF2zSYU4DZVRSwC7pvfjjM8FTtzzku41rBQxxdhHh8kA6gnmRyCQj7X8SgeGZL8HiRfiHN6uUhmtaEA5d8pM",
 		noPool:   cfg.NoPool,
+		noBTC:    cfg.NoBTC,
 		poolPaid: 0.184,
 		poolDue:  0.0031,
 	}
@@ -168,9 +171,85 @@ func (m *mockSource) Gather(_ context.Context) (*model.Snapshot, error) {
 		}
 	}
 
+	if !m.noBTC {
+		snap.Bitcoin = m.bitcoin(now)
+	}
+
 	if m.tick == 1 {
 		snap.Warnings = append(snap.Warnings, "mock mode: synthetic data, no cluster")
 	}
 	snap.Summarize()
 	return snap, nil
+}
+
+// bitcoin fabricates both halves of the Bitcoin tab: a public-pool that reports
+// per-device rows over its API, and a ckpool whose stats come from log records —
+// so every branch of the renderer is exercised without a cluster (FR-014).
+func (m *mockSource) bitcoin(now time.Time) *model.BitcoinView {
+	m.btcShares += float64(m.rng.Intn(3))
+	jitter := func(base float64) float64 { return base * (0.97 + m.rng.Float64()*0.06) }
+
+	ppStats := model.NewBitcoinStats()
+	ppStats.HashrateWindow = "now"
+	ppStats.Hashrate1m = jitter(1.68e12)
+	ppStats.Workers = 2
+	ppStats.BestShare = 4.1e9
+	ppStats.BlockHeight = 907213 + int64(m.tick/20)
+	ppStats.BlocksFound = 0
+	ppStats.TotalsAsOf = now.Add(-2 * time.Minute)
+	ppStats.LastUpdate = now
+
+	ckStats := model.NewBitcoinStats()
+	ckStats.HashrateWindow = "1m"
+	ckStats.Hashrate1m = jitter(480e12)
+	ckStats.Hashrate5m = jitter(472e12)
+	ckStats.Hashrate1h = jitter(468e12)
+	ckStats.Users = 1
+	ckStats.Workers = 2
+	ckStats.WorkersIdle = 0
+	ckStats.Disconnected = 0
+	ckStats.Accepted = 12470 + m.btcShares
+	ckStats.Rejected = 3
+	ckStats.BestShare = 1.2e9
+	ckStats.NetworkDiffPct = 0.02
+	ckStats.SPS1m = 1.4
+	ckStats.LastUpdate = now.Add(-8 * time.Second)
+	ckStats.Runtime = 512000 * time.Second
+
+	return &model.BitcoinView{
+		Scope: "all namespaces (mock)",
+		Pools: []model.BitcoinPool{
+			{
+				Impl: model.ImplPublicPool, Namespace: "bitcoin", Pod: "mining-pool-6f9c4b7d5-2k9xp",
+				Node: "andromeda", Phase: "Running", Running: true, Uptime: 73 * time.Hour,
+				Source: model.SourceAPI, Detail: model.DetailDevice, Stats: ppStats, AsOf: now,
+				Miners: []model.BitcoinMiner{
+					{
+						Name: "bitaxe-01", SessionID: "a1b2c3d4", Hashrate: jitter(480e9),
+						BestDifficulty: 1.2e9, BestEver: model.Unknown, Shares: model.Unknown, Workers: -1,
+						StartTime: now.Add(-146 * time.Hour), LastSeen: now.Add(-11 * time.Second),
+					},
+					{
+						Name: "nerdqaxe-01", SessionID: "e5f6a7b8", Hashrate: jitter(1.2e12),
+						BestDifficulty: 8.9e8, BestEver: model.Unknown, Shares: model.Unknown, Workers: -1,
+						StartTime: now.Add(-64 * time.Hour), LastSeen: now.Add(-13 * time.Second),
+					},
+				},
+			},
+			{
+				Impl: model.ImplCkpool, Namespace: "bitcoin-solo", Pod: "mining-pool-7c9f8b6d4-x2k9p",
+				Node: "orion", Phase: "Running", Running: true, Uptime: 142 * time.Hour,
+				Source: model.SourceLogs, Detail: model.DetailAddress, Stats: ckStats, AsOf: now,
+				Note: "per-device detail unavailable from ckpool logs (addresses only)",
+				Miners: []model.BitcoinMiner{
+					{
+						Name:     "bc1qexampleaddressxxxxxxxxxxxxxxxxxxxxxxx",
+						Hashrate: ckStats.Hashrate1m, BestDifficulty: 1.2e9, BestEver: 4.1e9,
+						Workers: 2, Shares: ckStats.Accepted,
+						StartTime: now.Add(-142 * time.Hour), LastSeen: now.Add(-time.Duration(m.rng.Intn(40)) * time.Second),
+					},
+				},
+			},
+		},
+	}
 }

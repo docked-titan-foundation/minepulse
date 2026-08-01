@@ -3,6 +3,7 @@ package collect
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/docked-titan-foundation/minepulse/internal/config"
 	"github.com/docked-titan-foundation/minepulse/internal/diag"
@@ -67,7 +68,36 @@ func RunDoctor(ctx context.Context, cfg config.Config) (*diag.Report, error) {
 	rep.Add(diag.APIReachabilityCheck(running, reachable))
 
 	rep.Add(poolCheck(ctx, cfg, miners))
+	rep.Add(bitcoinCheck(ctx, cfg, k))
 	return rep, nil
+}
+
+// bitcoinCheck reports what Bitcoin pool discovery found and, when a pool is
+// there but silent, what the operator can do about it (FR-018). A missing pool
+// is INFO — plenty of clusters mine only Monero — so it never fails the exit
+// code on its own.
+func bitcoinCheck(ctx context.Context, cfg config.Config, k *kubeClient) diag.Check {
+	if cfg.NoBTC {
+		return diag.Check{Name: "bitcoin pool", Status: diag.StatusInfo, Detail: "skipped (--no-btc)"}
+	}
+
+	pods, scope, warn := k.detectPools(ctx, cfg)
+	if warn != "" || len(pods) == 0 {
+		return diag.BitcoinCheck(scope, nil, false, warn)
+	}
+
+	c := newBTCCollector(k, cfg)
+	results := make([]diag.BitcoinPoolResult, 0, len(pods))
+	for i := range pods {
+		p, _ := c.gatherPool(ctx, &pods[i], time.Now())
+		results = append(results, diag.BitcoinPoolResult{
+			Where:    fmt.Sprintf("%s in %s/%s", p.Impl, p.Namespace, p.Pod),
+			Source:   string(p.Source),
+			HasStats: p.Stats != nil,
+			Remedy:   p.Remedy,
+		})
+	}
+	return diag.BitcoinCheck(scope, results, false, "")
 }
 
 func poolCheck(ctx context.Context, cfg config.Config, miners []minerPod) diag.Check {

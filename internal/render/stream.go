@@ -56,10 +56,88 @@ func Stream(w io.Writer, s *model.Snapshot) {
 			Hashrate(p.ReportedHashrate), XMR(p.AmountDueXMR), XMR(p.AmountPaidXMR),
 			Ago(p.LastShare), stale)
 	}
+	streamBitcoin(w, s.Bitcoin)
+
 	for _, warn := range s.Warnings {
 		fmt.Fprintf(w, "! %s\n", warn)
 	}
 	fmt.Fprintln(w, strings.Repeat("─", 40))
+}
+
+// streamBitcoin writes the Bitcoin block. A single line when there is nothing to
+// report, so a script can tell "no pool" from "broken pool" without parsing JSON.
+func streamBitcoin(w io.Writer, v *model.BitcoinView) {
+	if v == nil {
+		fmt.Fprintln(w, "bitcoin: no pool detected")
+		return
+	}
+	if len(v.Pools) == 0 {
+		note := v.Note
+		if note == "" {
+			note = "no pool found in " + v.Scope
+		}
+		fmt.Fprintf(w, "bitcoin: %s\n", note)
+		return
+	}
+
+	for i := range v.Pools {
+		p := &v.Pools[i]
+		state := p.Phase
+		if !p.Running {
+			state += " (not running)"
+		}
+		src := string(p.Source)
+		if p.Stale {
+			src += ", stale " + Ago(p.AsOf)
+		}
+		fmt.Fprintf(w, "bitcoin: %s (%s) · %s/%s · %s %s\n",
+			p.Impl, src, p.Namespace, p.Pod, state, Dur(p.Uptime))
+
+		if p.Stats == nil {
+			if p.Note != "" {
+				fmt.Fprintf(w, "  ! %s\n", p.Note)
+			}
+			if p.Remedy != "" {
+				fmt.Fprintf(w, "  → %s\n", p.Remedy)
+			}
+			continue
+		}
+		st := p.Stats
+		fmt.Fprintf(w, "  %s (%s) · %s · %s · best %s\n",
+			Hashrate(st.Hashrate1m), orDash(st.HashrateWindow),
+			workerSummary(st), shareSummary(st), Difficulty(st.BestShare))
+
+		if len(p.Miners) > 0 {
+			// Columns follow the granularity: a device has no worker count or
+			// share total to report, an address has no session to have started.
+			tw := tabwriter.NewWriter(w, 0, 2, 2, ' ', 0)
+			if p.Detail == model.DetailDevice {
+				fmt.Fprintln(tw, "  WORKER\tHASHRATE\tBEST\tLAST SHARE")
+				for _, m := range p.Miners {
+					fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\n",
+						m.Name, Hashrate(m.Hashrate), Difficulty(m.BestDifficulty), Ago(m.LastSeen))
+				}
+			} else {
+				fmt.Fprintln(tw, "  ADDRESS\tHASHRATE\tWORKERS\tSHARES\tBEST\tLAST SHARE")
+				for _, m := range p.Miners {
+					workers := "—"
+					if m.Workers >= 0 {
+						workers = fmt.Sprintf("%d", m.Workers)
+					}
+					fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\t%s\t%s\n",
+						ShortAddress(m.Name), Hashrate(m.Hashrate), workers, Count(m.Shares),
+						Difficulty(m.BestDifficulty), Ago(m.LastSeen))
+				}
+			}
+			_ = tw.Flush()
+		}
+		if p.Note != "" {
+			fmt.Fprintf(w, "  ! %s\n", p.Note)
+		}
+		if p.Remedy != "" {
+			fmt.Fprintf(w, "  → %s\n", p.Remedy)
+		}
+	}
 }
 
 func minerCPU(n model.NodeStatus) string {

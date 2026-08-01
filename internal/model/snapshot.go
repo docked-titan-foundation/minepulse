@@ -24,7 +24,11 @@ type Snapshot struct {
 	Cluster   ClusterSummary `json:"cluster"`
 	Nodes     []NodeStatus   `json:"nodes"`
 	Pool      *PoolStats     `json:"pool,omitempty"`
-	Warnings  []string       `json:"warnings,omitempty"`
+	// Bitcoin is the other coin's view: the solo pool(s) running in the same
+	// cluster. Nil when none was detected or --no-btc was set. It never feeds
+	// Cluster, which stays the Monero summary it has always been.
+	Bitcoin  *BitcoinView `json:"bitcoin,omitempty"`
+	Warnings []string     `json:"warnings,omitempty"`
 }
 
 // ClusterSummary is the aggregate across all mining nodes.

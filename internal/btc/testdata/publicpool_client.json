@@ -1,0 +1,22 @@
+{
+  "bestDifficulty": 4100000000,
+  "workersCount": 2,
+  "workers": [
+    {
+      "sessionId": "a1b2c3d4",
+      "name": "bitaxe-01",
+      "bestDifficulty": "1200000000.00",
+      "hashRate": 480000000000,
+      "startTime": "2026-07-25T09:12:00.000Z",
+      "lastSeen": "2026-07-31T12:40:31.000Z"
+    },
+    {
+      "sessionId": "e5f6a7b8",
+      "name": "nerdqaxe-01",
+      "bestDifficulty": "890000000.00",
+      "hashRate": 1200000000000,
+      "startTime": "2026-07-28T18:03:41.000Z",
+      "lastSeen": "2026-07-31T12:40:29.000Z"
+    }
+  ]
+}

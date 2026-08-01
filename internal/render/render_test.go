@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/docked-titan-foundation/minepulse/internal/model"
 )
 
@@ -53,6 +55,62 @@ func TestTUIViewNilSnapshot(t *testing.T) {
 	m := tuiModel{}
 	if out := m.View(); !strings.Contains(out, "gathering") {
 		t.Errorf("nil-snapshot view should say gathering, got:\n%s", out)
+	}
+}
+
+// The tab strip is always visible, and m/b/tab only change what is drawn — no
+// gather, no pause change, no new timestamp (FR-004).
+func TestTUITabsSwitchBodyOnly(t *testing.T) {
+	snap := sampleSnapshot()
+	snap.Bitcoin = &model.BitcoinView{Scope: "all namespaces", Pools: []model.BitcoinPool{addressPool()}}
+	updated := time.Now()
+	m := tuiModel{snap: snap, updated: updated}
+
+	monero := m.View()
+	if !strings.Contains(monero, "monero") || !strings.Contains(monero, "bitcoin") {
+		t.Errorf("tab strip missing\n---\n%s", monero)
+	}
+	if !strings.Contains(monero, "andromeda") {
+		t.Errorf("Monero tab must show the node table\n---\n%s", monero)
+	}
+	if !strings.Contains(monero, "m/b coin") {
+		t.Errorf("footer must advertise the coin keys\n---\n%s", monero)
+	}
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
+	bm, ok := next.(tuiModel)
+	if !ok {
+		t.Fatalf("Update returned %T, want tuiModel", next)
+	}
+	if bm.tab != tabBitcoin {
+		t.Fatalf("pressing b selected tab %v, want bitcoin", bm.tab)
+	}
+	if !bm.updated.Equal(updated) || bm.gathering {
+		t.Error("switching tabs must not trigger a gather or change the update time")
+	}
+	btc := bm.View()
+	if !strings.Contains(btc, "ckpool") || strings.Contains(btc, "andromeda") {
+		t.Errorf("Bitcoin tab must replace the Monero body\n---\n%s", btc)
+	}
+
+	back, _ := bm.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+	if got := back.(tuiModel).View(); got != monero {
+		t.Errorf("returning to Monero must render the same view\n--- want\n%s\n--- got\n%s", monero, got)
+	}
+
+	toggled, _ := bm.Update(tea.KeyMsg{Type: tea.KeyTab})
+	if toggled.(tuiModel).tab != tabMonero {
+		t.Error("tab key must toggle back to Monero")
+	}
+}
+
+// With no Bitcoin data the tab still renders, saying which of the empty states
+// it is in rather than showing an empty box.
+func TestTUIBitcoinTabWithoutData(t *testing.T) {
+	m := tuiModel{snap: sampleSnapshot(), updated: time.Now(), tab: tabBitcoin}
+	out := m.View()
+	if !strings.Contains(out, "no Bitcoin pool detected") {
+		t.Errorf("Bitcoin tab without data = %q", out)
 	}
 }
 

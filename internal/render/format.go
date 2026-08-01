@@ -6,12 +6,19 @@ import (
 	"time"
 )
 
-// Hashrate formats H/s with a sensible unit. Unknown (<0) renders as "—".
+// Hashrate formats H/s with a sensible unit. Unknown (<0) renders as "—". The
+// scale runs to PH/s so a Bitcoin ASIC and a CPU miner read the same way.
 func Hashrate(hs float64) string {
 	if hs < 0 {
 		return "—"
 	}
 	switch {
+	case hs >= 1e15:
+		return fmt.Sprintf("%.2f PH/s", hs/1e15)
+	case hs >= 1e12:
+		return fmt.Sprintf("%.2f TH/s", hs/1e12)
+	case hs >= 1e9:
+		return fmt.Sprintf("%.2f GH/s", hs/1e9)
 	case hs >= 1e6:
 		return fmt.Sprintf("%.2f MH/s", hs/1e6)
 	case hs >= 1e3:
@@ -19,6 +26,57 @@ func Hashrate(hs float64) string {
 	default:
 		return fmt.Sprintf("%.0f H/s", hs)
 	}
+}
+
+// Difficulty formats a share difficulty with an SI suffix (Bitcoin shares run
+// from thousands to trillions). Unknown (<0) renders as "—".
+func Difficulty(d float64) string {
+	if d < 0 {
+		return "—"
+	}
+	switch {
+	case d >= 1e12:
+		return fmt.Sprintf("%.2f T", d/1e12)
+	case d >= 1e9:
+		return fmt.Sprintf("%.2f G", d/1e9)
+	case d >= 1e6:
+		return fmt.Sprintf("%.2f M", d/1e6)
+	case d >= 1e3:
+		return fmt.Sprintf("%.2f k", d/1e3)
+	default:
+		return fmt.Sprintf("%.0f", d)
+	}
+}
+
+// Count formats a share count, which ckpool reports as difficulty-weighted
+// floats rather than integers. Unknown (<0) renders as "—".
+func Count(v float64) string {
+	if v < 0 {
+		return "—"
+	}
+	if v >= 1e6 {
+		return fmt.Sprintf("%.2fM", v/1e6)
+	}
+	return fmt.Sprintf("%.0f", v)
+}
+
+// ShortAddress truncates a payout address for display. Addresses are shown
+// truncated in the terminal and never logged (Constitution VII); the JSON
+// output carries them whole because that is a data contract.
+func ShortAddress(a string) string {
+	const head, tail = 8, 4
+	if len(a) <= head+tail+1 {
+		return a
+	}
+	return a[:head] + "…" + a[len(a)-tail:]
+}
+
+// durSince is how long ago t was, or 0 when unknown, for Dur.
+func durSince(t time.Time) time.Duration {
+	if t.IsZero() {
+		return 0
+	}
+	return time.Since(t)
 }
 
 // Pct formats a percentage; negative means unavailable.

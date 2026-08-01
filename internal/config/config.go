@@ -34,6 +34,14 @@ type Config struct {
 	PoolAPIURL string
 	XMRigAPI   XMRigAPIMode
 	Mock       bool
+
+	// Bitcoin side. Every field's zero value means "auto-detect", so the
+	// Bitcoin tab needs no configuration at all (FR-006).
+	BTCNamespace string // empty = search every namespace the credentials allow
+	BTCSelector  string // extra label selector, ANDed with the fingerprint check
+	BTCAddress   string // payout address, for public-pool per-device rows
+	BTCAPIPort   int    // 0 = the container port named "api", else 3334
+	NoBTC        bool   // skip Bitcoin discovery and collection entirely
 }
 
 // Defaults returns the baseline configuration.

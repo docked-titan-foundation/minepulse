@@ -57,6 +57,11 @@ func init() {
 	pf.StringVar(&cfg.PoolAPIURL, "pool-api", cfg.PoolAPIURL, "pool stats API base URL (SupportXMR-compatible)")
 	pf.StringVar((*string)(&cfg.XMRigAPI), "xmrig-api", string(cfg.XMRigAPI), "miner stats source: auto|on|off")
 	pf.BoolVar(&cfg.Mock, "mock", false, "use synthetic data; no cluster access")
+	pf.StringVar(&cfg.BTCNamespace, "btc-namespace", "", "namespace of the Bitcoin solo pool (default: search all readable namespaces)")
+	pf.StringVar(&cfg.BTCSelector, "btc-selector", "", "extra label selector for Bitcoin pool discovery")
+	pf.StringVar(&cfg.BTCAddress, "btc-address", "", "BTC payout address, for per-worker rows on public-pool")
+	pf.IntVar(&cfg.BTCAPIPort, "btc-api-port", 0, "public-pool API port (default: the pod's \"api\" port, else 3334)")
+	pf.BoolVar(&cfg.NoBTC, "no-btc", false, "do not look for a Bitcoin pool")
 
 	rootCmd.AddCommand(watchCmd, snapshotCmd, doctorCmd)
 }

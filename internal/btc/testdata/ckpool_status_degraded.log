@@ -1,0 +1,3 @@
+[2026-07-31 12:40:18.421] ckpool: Pool:{"runtime": 512000, "lastupdate": 1785500418, "Users": 1, "Workers": 2, "Idle": 1, "Disconnected": 0}
+[2026-07-31 12:40:18.421] ckpool: Pool:{"hashrate1m": "not-a-number", "hashrate5m": "472T", "hashrate15m": "470T", "hashrate1hr": "1e+03T", "hashrate6hr": "465T", "hashrate1d": "999", "hashrate7d": "0"}
+[2026-07-31 12:40:18.422] ckpool: Pool:{"diff": 0.02, "accepted": 12483.0, "rejected": 3.0, "bestshare": 1200000000, "SPS1m": 1.4, "SPS5m": 1.3, "SPS15m": 1.3, "SPS1h": 1.2}

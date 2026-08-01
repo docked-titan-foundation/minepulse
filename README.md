@@ -34,6 +34,10 @@ DaemonSet and answers, continuously, three questions:
    real workloads arrive.
 3. **Is it earning anything?** Pool-side reported hashrate, amount due, and total paid.
 
+And, on a second tab, the other coin: **is the Bitcoin solo pool alive?** Press `b` for
+hashrate, connected workers, shares and best share from whichever pool runs in the same
+cluster — found without configuration. Press `m` to go back.
+
 It never changes anything it observes — only reads (`get`/`list`/`watch`, `pods/log`,
 `pods/proxy`, and metrics).
 
@@ -83,6 +87,34 @@ Common flags: `-n/--namespace`, `--selector`, `--interval` (default `3s`),
 `--wallet` (else auto-detected from the miner), `--no-pool`,
 `--xmrig-api auto|on|off`, `--kubeconfig`, `--context`.
 
+### The bitcoin tab
+
+Keys: **`m`** monero · **`b`** bitcoin · **`tab`** toggles. Both coins refresh every
+tick, so switching never shows staler data — and never triggers a fetch.
+
+minepulse finds the pool itself: it lists pods, recognises **public-pool** and **ckpool**
+by their container image, and reads whatever that implementation exposes. What you get
+differs by pool, and the panel always says which source it used:
+
+| | public-pool | ckpool |
+|---|---|---|
+| Stats source | its JSON API, read through the API server's pod proxy | the status records it logs |
+| Pool totals | ✅ hashrate, workers, block height | ✅ hashrate (1m/5m/1h), users, workers, idle, accepted/rejected, best share |
+| Per-miner rows | ✅ per **device**, with `--btc-address` | ⚠️ per **payout address** only — ckpool never logs per-device figures |
+| Out of the box | works | **needs one change — see below** |
+
+**ckpool caveat.** ckpool writes its status records to its logfile at NOTICE level, and
+sends only warnings and errors to stderr — so a stock deployment's pod log carries no
+stats at all. minepulse still detects the pool and shows its identity, state and uptime,
+and tells you the fix: tail that file into the pod's log stream, e.g. a sidecar running
+`tail -F /var/lib/ckpool/logs/ckpool.log`. Do that and the full panel lights up. (Its
+other stats interfaces — a Unix socket and files on its volume — need `exec`, which
+minepulse will not do.)
+
+Bitcoin flags, all optional: `--btc-address` (payout address, unlocks per-device rows on
+public-pool), `--btc-namespace` / `--btc-selector` (narrow the search),
+`--btc-api-port` (override the public-pool API port), `--no-btc` (skip it entirely).
+
 ### See it take and yield idle CPU
 
 ```bash
@@ -101,6 +133,11 @@ Watch that node's CPU-free sparkline dip while `cpu-hog` runs and recover after 
 Read-only: `pods` (get/list/watch), `pods/log`, `pods/proxy`, `nodes`, and
 `metrics.k8s.io` (pods + nodes). Running locally with an admin kubeconfig already has
 these; for a dedicated ServiceAccount apply [`deploy/rbac.yaml`](deploy/rbac.yaml).
+
+Finding the Bitcoin pool needs those pod reads **cluster-wide**, since it can live in any
+namespace — that is the `minepulse-pool-reader` ClusterRole in the same file. Prefer not
+to grant it? Pass `--btc-namespace <ns>`, or `--no-btc`; without either, minepulse
+narrows the search to the miner's namespace and says so instead of failing.
 
 The richest per-node stats come from the miner's XMRig HTTP API when it's enabled
 (`httpApi.enabled: true`); otherwise minepulse falls back to parsing miner logs and

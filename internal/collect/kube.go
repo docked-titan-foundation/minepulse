@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -95,6 +96,17 @@ func (k *kubeClient) listMiners(ctx context.Context) ([]minerPod, error) {
 		out = append(out, mp)
 	}
 	return out, nil
+}
+
+// listPodsIn lists pods in one namespace, or in every namespace the credentials
+// allow when ns is empty. selector may be empty. It is the raw read the Bitcoin
+// pool discovery filters — kubeClient stays free of any notion of what a pool is.
+func (k *kubeClient) listPodsIn(ctx context.Context, ns, selector string) ([]corev1.Pod, error) {
+	list, err := k.cs.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
 }
 
 // nodeCPUCapacity returns allocatable CPU (millicores) for the given nodes.

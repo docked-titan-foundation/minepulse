@@ -22,6 +22,7 @@ type clusterSource struct {
 	cfg            config.Config
 	k              *kubeClient
 	poolClient     *pool.Client
+	btc            *btcCollector
 	rings          map[string]*model.Ring
 	wallet         string           // resolved once
 	configuredPool string           // resolved from miner args (for donate detection)
@@ -41,6 +42,9 @@ func newClusterSource(cfg config.Config) (Source, error) {
 	}
 	if !cfg.NoPool {
 		c.poolClient = pool.NewClient(cfg.PoolAPIURL)
+	}
+	if !cfg.NoBTC {
+		c.btc = newBTCCollector(k, cfg)
 	}
 	return c, nil
 }
@@ -136,6 +140,16 @@ func (c *clusterSource) Gather(ctx context.Context) (*model.Snapshot, error) {
 	sort.Slice(snap.Nodes, func(i, j int) bool { return snap.Nodes[i].Node < snap.Nodes[j].Node })
 
 	c.gatherPool(ctx, snap)
+
+	// The Bitcoin side is collected every tick regardless of which tab is
+	// showing, so switching tabs never displays staler data than the timestamp
+	// claims (FR-005). It can only add warnings, never fail the snapshot.
+	if c.btc != nil {
+		view, warns := c.btc.Gather(ctx, snap.Timestamp)
+		snap.Bitcoin = view
+		snap.Warnings = append(snap.Warnings, warns...)
+	}
+
 	snap.Summarize()
 	return snap, nil
 }

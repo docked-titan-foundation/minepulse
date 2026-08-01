@@ -19,6 +19,11 @@ linters-settings:
     local-prefixes: github.com/docked-titan-foundation/minepulse
   misspell:
     locale: US
+    # ckpool's own JSON key is "authorised" (its author writes British English).
+    # The struct tag has to match the wire format byte for byte, so this word is
+    # data, not prose. Go identifiers around it still use US spelling.
+    ignore-words:
+      - authorised
 
 issues:
   exclude-rules:
