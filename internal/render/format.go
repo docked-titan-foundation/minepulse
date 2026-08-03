@@ -4,6 +4,8 @@ package render
 import (
 	"fmt"
 	"time"
+
+	"github.com/docked-titan-foundation/minepulse/internal/model"
 )
 
 // unavailable is how every panel, column and output mode spells "this source
@@ -138,4 +140,43 @@ func Ago(t time.Time) string {
 		return unavailable
 	}
 	return Dur(time.Since(t)) + " ago"
+}
+
+// PoolLine is the identity line each tab opens with: where the work goes, whose
+// pool it is, how that pool shares work, and at what address (specs/007).
+//
+//	[internal] mining-pool.bitcoin.svc:3333 - public-pool - solo - 10.43.7.12
+//
+// Every field degrades to the unavailable mark on its own, so a pool minepulse
+// half-recognizes still produces a line rather than nothing. Locality is the one
+// field that never guesses: it reports what it could prove, and its basis is
+// available for the caller to dim in beside it.
+func PoolLine(e *model.PoolEndpoint) string {
+	if e == nil {
+		return ""
+	}
+	return fmt.Sprintf("[%s] %s - %s - %s - %s",
+		locality(e.Locality), orMark(e.URL), orMark(e.Brand),
+		mode(e.Mode), orMark(e.IP))
+}
+
+func locality(l model.Locality) string {
+	if l == model.LocalityInternal || l == model.LocalityExternal {
+		return string(l)
+	}
+	return unavailable
+}
+
+func mode(m model.MiningMode) string {
+	if m == model.ModeSolo || m == model.ModeShared {
+		return string(m)
+	}
+	return unavailable
+}
+
+func orMark(s string) string {
+	if s == "" {
+		return unavailable
+	}
+	return s
 }

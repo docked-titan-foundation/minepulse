@@ -50,6 +50,10 @@ type btcCollector struct {
 	scope     string
 	scopeWarn string
 	detected  time.Time
+
+	// net is the cluster's own addresses, set by the caller each tick so both
+	// tabs classify localities against the same reading.
+	net clusterNet
 }
 
 func newBTCCollector(k *kubeClient, cfg config.Config) *btcCollector {
@@ -111,7 +115,8 @@ func (c *btcCollector) gatherPool(ctx context.Context, pp *poolPod, now time.Tim
 	out := model.BitcoinPool{
 		Impl: pp.impl, Namespace: pp.namespace, Pod: pp.pod, Node: pp.node,
 		Phase: pp.phase, Running: pp.running,
-		Source: model.SourceNone, Detail: model.DetailTotals,
+		Endpoint: c.k.bitcoinEndpoint(ctx, *pp, c.net),
+		Source:   model.SourceNone, Detail: model.DetailTotals,
 	}
 	if !pp.start.IsZero() {
 		out.Uptime = time.Since(pp.start)

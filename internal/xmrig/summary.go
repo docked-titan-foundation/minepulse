@@ -25,6 +25,7 @@ type Summary struct {
 	} `json:"results"`
 	Connection struct {
 		Pool   string `json:"pool"`
+		IP     string `json:"ip"`
 		Uptime int64  `json:"uptime"`
 		Ping   int    `json:"ping"`
 	} `json:"connection"`
@@ -87,6 +88,7 @@ func (s *Summary) ToMiningStats(activeThreads int, configuredPool string) model.
 		SharesGood:     s.Results.SharesGood,
 		SharesTotal:    s.Results.SharesTotal,
 		Pool:           s.Connection.Pool,
+		PoolIP:         s.Connection.IP,
 		Connected:      s.Connection.Pool != "" && s.Connection.Uptime > 0,
 		PingMs:         ping,
 		DonateFallback: s.Connection.Pool != "" && IsDonatePool(s.Connection.Pool, configuredPool),

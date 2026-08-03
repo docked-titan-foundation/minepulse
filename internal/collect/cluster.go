@@ -144,7 +144,13 @@ func (c *clusterSource) Gather(ctx context.Context) (*model.Snapshot, error) {
 	// The Bitcoin side is collected every tick regardless of which tab is
 	// showing, so switching tabs never displays staler data than the timestamp
 	// claims (FR-005). It can only add warnings, never fail the snapshot.
+	// One reading of the cluster's own addresses per tick, shared by both tabs'
+	// identity lines. A failure here degrades the marker, never the snapshot.
+	cnet := c.k.scanClusterNet(ctx)
+	snap.Endpoint = moneroEndpoint(snap.Nodes, cnet, c.configuredPool)
+
 	if c.btc != nil {
+		c.btc.net = cnet
 		view, warns := c.btc.Gather(ctx, snap.Timestamp)
 		snap.Bitcoin = view
 		snap.Warnings = append(snap.Warnings, warns...)

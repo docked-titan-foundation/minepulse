@@ -140,19 +140,21 @@ func (m *mockSource) Gather(_ context.Context) (*model.Snapshot, error) {
 		hr := float64(activeThreads) * n.hashPerT
 		n.good += int64(m.rng.Intn(3))
 		n.total = n.good + int64(m.tick/7)
-		pool := "pool.supportxmr.com:443"
+		pool, poolIP := "pool.supportxmr.com:443", "116.202.180.221"
 		if n.donate {
-			pool = "donate.v2.xmrig.com:3333"
+			pool, poolIP = "donate.v2.xmrig.com:3333", "178.128.242.134"
 		}
 		ns.Mining = &model.MiningStats{
 			Hashrate10s: hr * (0.9 + m.rng.Float64()*0.2), Hashrate60s: hr, Hashrate15m: hr * 0.98,
 			ThreadsActive: activeThreads, ThreadsTotal: int(n.cores),
 			SharesGood: n.good, SharesTotal: n.total,
-			Pool: pool, Connected: true, PingMs: 20 + m.rng.Intn(60),
+			Pool: pool, PoolIP: poolIP, Connected: true, PingMs: 20 + m.rng.Intn(60),
 			DonateFallback: n.donate, WorkerID: n.name, Version: "6.20.0",
 		}
 		snap.Nodes = append(snap.Nodes, ns)
 	}
+
+	snap.Endpoint = moneroEndpoint(snap.Nodes, mockNet(), "pool.supportxmr.com:443")
 
 	if !m.noPool {
 		m.poolDue += 0.00002
@@ -222,6 +224,11 @@ func (m *mockSource) bitcoin(now time.Time) *model.BitcoinView {
 			{
 				Impl: model.ImplPublicPool, Namespace: "bitcoin", Pod: "mining-pool-6f9c4b7d5-2k9xp",
 				Node: "andromeda", Phase: "Running", Running: true, Uptime: 73 * time.Hour,
+				Endpoint: &model.PoolEndpoint{
+					URL: "mining-pool.bitcoin.svc:3333", IP: "10.43.7.12",
+					Brand: string(model.ImplPublicPool), Mode: model.ModeSolo,
+					Locality: model.LocalityInternal, Basis: "matched Service bitcoin/mining-pool",
+				},
 				Source: model.SourceAPI, Detail: model.DetailDevice, Stats: ppStats, AsOf: now,
 				Miners: []model.BitcoinMiner{
 					{
@@ -239,6 +246,11 @@ func (m *mockSource) bitcoin(now time.Time) *model.BitcoinView {
 			{
 				Impl: model.ImplCkpool, Namespace: "bitcoin-solo", Pod: "mining-pool-7c9f8b6d4-x2k9p",
 				Node: "orion", Phase: "Running", Running: true, Uptime: 142 * time.Hour,
+				Endpoint: &model.PoolEndpoint{
+					URL: "mining-pool.bitcoin-solo.svc:3333", IP: "10.43.9.40",
+					Brand: string(model.ImplCkpool), Mode: model.ModeUnknown,
+					Locality: model.LocalityInternal, Basis: "matched Service bitcoin-solo/mining-pool",
+				},
 				Source: model.SourceLogs, Detail: model.DetailAddress, Stats: ckStats, AsOf: now,
 				Note: "per-device detail unavailable from ckpool logs (addresses only)",
 				Miners: []model.BitcoinMiner{
@@ -250,6 +262,20 @@ func (m *mockSource) bitcoin(now time.Time) *model.BitcoinView {
 					},
 				},
 			},
+		},
+	}
+}
+
+// mockNet is a synthetic cluster whose addresses are the mock Bitcoin pools',
+// so --mock exercises the real classifier: the Monero pools are public and come
+// out external, and a cluster-object match is what makes the Bitcoin ones
+// internal rather than a hardcoded string.
+func mockNet() clusterNet {
+	return clusterNet{
+		readOK: true,
+		owner: map[string]string{
+			"10.43.7.12": "Service bitcoin/mining-pool",
+			"10.43.9.40": "Service bitcoin-solo/mining-pool",
 		},
 	}
 }

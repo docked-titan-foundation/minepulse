@@ -19,12 +19,19 @@ import (
 // The guard survives it: the tab may not move by accident, including "while
 // tidying" a shared helper it happens to use.
 //
+// Note what the identity line does with a divergent cluster: it names the pool
+// most miners are on and says out loud that they disagree, rather than reporting
+// the majority as the whole truth — orion is on the donate pool (007-FR-007).
+//
 // Three properties to notice. Columns are sized to their content, so STATE fits
 // a real phase and HASH/60s does not reserve four columns nothing uses. The
 // rules line up across a row with a bar and a row without, because widths are
 // display columns. And a node with no CPU metrics gets the unavailable mark in
 // NODE CPU FREE rather than an empty trough, which would claim 0% free.
-const moneroBodyGolden = "cluster  2/2 mining · 617 H/s · 42 shares✓ · miner 5000m · node free 12%\n" +
+const moneroBodyGolden = "[external] pool.supportxmr.com:443 - SupportXMR - shared - 116.202.180.221  ! miners disagree on the pool\n" +
+	"public address, no cluster object matches\n" +
+	"\n" +
+	"cluster  2/2 mining · 617 H/s · 42 shares✓ · miner 5000m · node free 12%\n" +
 	"\n" +
 	"NODE      │ STATE   │ HASH/60s │ THR │ SHARES │ MINER │ NODE CPU FREE │ POOL\n" +
 	"──────────┼─────────┼──────────┼─────┼────────┼───────┼───────────────┼─────────────────────────\n" +

@@ -14,6 +14,13 @@ import (
 func Stream(w io.Writer, s *model.Snapshot) {
 	c := s.Cluster
 	fmt.Fprintf(w, "── minepulse %s ──\n", s.Timestamp.Format("15:04:05"))
+	if e := s.Endpoint; e != nil {
+		div := ""
+		if e.Diverged {
+			div = "  ! miners disagree on the pool"
+		}
+		fmt.Fprintf(w, "%s%s\n", PoolLine(e), div)
+	}
 	fmt.Fprintf(w, "cluster: %d/%d mining · %s · shares %d✓/%d✗ · miner CPU %dm · node free %s\n",
 		c.NodesMining, c.NodesTotal, Hashrate(c.TotalHashrate),
 		c.AcceptedShares, c.RejectedShares, c.MinerCPUMilli, Pct(c.NodeCPUFreePct))
@@ -89,6 +96,9 @@ func streamBitcoin(w io.Writer, v *model.BitcoinView) {
 		src := string(p.Source)
 		if p.Stale {
 			src += ", stale " + Ago(p.AsOf)
+		}
+		if e := p.Endpoint; e != nil {
+			fmt.Fprintf(w, "bitcoin: %s\n", PoolLine(e))
 		}
 		fmt.Fprintf(w, "bitcoin: %s (%s) · %s/%s · %s %s\n",
 			p.Impl, src, p.Namespace, p.Pod, state, Dur(p.Uptime))

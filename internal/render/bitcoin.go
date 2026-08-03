@@ -41,6 +41,15 @@ func bitcoinBody(v *model.BitcoinView) string {
 func bitcoinPool(p *model.BitcoinPool) string {
 	var b strings.Builder
 
+	// Identity first: one line cannot describe two pools, so each panel carries
+	// its own (007-FR-008).
+	if e := p.Endpoint; e != nil {
+		b.WriteString(headSt.Render(PoolLine(e)) + "\n")
+		if e.Basis != "" {
+			b.WriteString(dimStyle.Render(e.Basis) + "\n")
+		}
+	}
+
 	// P2: header line is the label plus the metrics, most important first.
 	if s := p.Stats; s != nil {
 		fmt.Fprintf(&b, "%s  %s\n", headSt.Render(string(p.Impl)), headlineMetrics(s))
@@ -112,7 +121,7 @@ func contextLine(p *model.BitcoinPool) string {
 	}
 	return fmt.Sprintf("%s %s %s %s %s",
 		dimStyle.Render(p.Namespace+"/"+p.Pod),
-		dimStyle.Render("on "+orDash(p.Node)),
+		dimStyle.Render("on "+orMark(p.Node)),
 		dimStyle.Render("·"),
 		state+dimStyle.Render(" "+Dur(p.Uptime)),
 		source)
@@ -236,11 +245,4 @@ func hashHead(s *model.BitcoinStats) string {
 		return "HASH"
 	}
 	return "HASH/" + s.HashrateWindow
-}
-
-func orDash(s string) string {
-	if s == "" {
-		return unavailable
-	}
-	return s
 }

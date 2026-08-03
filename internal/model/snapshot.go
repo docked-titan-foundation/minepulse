@@ -17,6 +17,45 @@ const (
 // Sentinel for a numeric field whose value is unknown/unavailable.
 const Unknown = -1.0
 
+// Locality is whether a pool address lives in this cluster or outside it. It is
+// a claim about cluster objects, not about address ranges: a pool on the
+// operator's NAS is private and still external, and saying otherwise would
+// misreport where their hashrate goes.
+type Locality string
+
+const (
+	LocalityInternal Locality = "internal"
+	LocalityExternal Locality = "external"
+	LocalityUnknown  Locality = "unknown"
+)
+
+// MiningMode is how a pool hands out work: solo jobs, or shares split among
+// everyone mining there. Unknown where the source cannot support an answer —
+// this is not guessable from a hostname.
+type MiningMode string
+
+const (
+	ModeSolo    MiningMode = "solo"
+	ModeShared  MiningMode = "shared"
+	ModeUnknown MiningMode = "unknown"
+)
+
+// PoolEndpoint is the identity of the pool a tab is reporting on: which address,
+// whose pool, how it shares work, and whether the traffic leaves the cluster.
+type PoolEndpoint struct {
+	URL      string     `json:"url"`
+	IP       string     `json:"ip,omitempty"`
+	Brand    string     `json:"brand,omitempty"`
+	Mode     MiningMode `json:"mode"`
+	Locality Locality   `json:"locality"`
+	// Basis records how Locality was decided, so a weaker test is never passed
+	// off as a stronger one.
+	Basis string `json:"locality_basis,omitempty"`
+	// Diverged is set when the miners are not all on the same pool — the case a
+	// single summary line must not average away.
+	Diverged bool `json:"diverged,omitempty"`
+}
+
 // Snapshot is one moment's view: the unit of refresh, of one-shot output, and
 // of a single `json` line.
 type Snapshot struct {
@@ -24,6 +63,9 @@ type Snapshot struct {
 	Cluster   ClusterSummary `json:"cluster"`
 	Nodes     []NodeStatus   `json:"nodes"`
 	Pool      *PoolStats     `json:"pool,omitempty"`
+	// Endpoint is the pool the miners are pointed at, for the Monero tab's
+	// identity line. Nil when no miner has connected yet.
+	Endpoint *PoolEndpoint `json:"endpoint,omitempty"`
 	// Bitcoin is the other coin's view: the solo pool(s) running in the same
 	// cluster. Nil when none was detected or --no-btc was set. It never feeds
 	// Cluster, which stays the Monero summary it has always been.
@@ -59,19 +101,24 @@ type NodeStatus struct {
 
 // MiningStats is what a running XMRig reports.
 type MiningStats struct {
-	Hashrate10s    float64 `json:"hashrate_10s"`
-	Hashrate60s    float64 `json:"hashrate_60s"`
-	Hashrate15m    float64 `json:"hashrate_15m"`
-	ThreadsActive  int     `json:"threads_active"`
-	ThreadsTotal   int     `json:"threads_total"`
-	SharesGood     int64   `json:"shares_good"`
-	SharesTotal    int64   `json:"shares_total"`
-	Pool           string  `json:"pool"`
-	Connected      bool    `json:"connected"`
-	PingMs         int     `json:"ping_ms"`
-	DonateFallback bool    `json:"donate_fallback"`
-	WorkerID       string  `json:"worker_id,omitempty"`
-	Version        string  `json:"version,omitempty"`
+	Hashrate10s   float64 `json:"hashrate_10s"`
+	Hashrate60s   float64 `json:"hashrate_60s"`
+	Hashrate15m   float64 `json:"hashrate_15m"`
+	ThreadsActive int     `json:"threads_active"`
+	ThreadsTotal  int     `json:"threads_total"`
+	SharesGood    int64   `json:"shares_good"`
+	SharesTotal   int64   `json:"shares_total"`
+	Pool          string  `json:"pool"`
+	// PoolIP is the address the miner itself resolved the pool to. It comes from
+	// the miner's vantage point inside the cluster, which is the only one that
+	// answers "where is this work actually going" — minepulse usually runs
+	// outside and often cannot resolve in-cluster DNS at all.
+	PoolIP         string `json:"pool_ip,omitempty"`
+	Connected      bool   `json:"connected"`
+	PingMs         int    `json:"ping_ms"`
+	DonateFallback bool   `json:"donate_fallback"`
+	WorkerID       string `json:"worker_id,omitempty"`
+	Version        string `json:"version,omitempty"`
 }
 
 // CPUSample is one point of miner-vs-node CPU.

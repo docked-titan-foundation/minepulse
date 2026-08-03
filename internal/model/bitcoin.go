@@ -42,6 +42,9 @@ type BitcoinPool struct {
 	Running   bool          `json:"running"`
 	Uptime    time.Duration `json:"uptime"`
 
+	// Endpoint is where miners reach this pool, for the panel's identity line.
+	Endpoint *PoolEndpoint `json:"endpoint,omitempty"`
+
 	Source StatsSource `json:"stats_source"`
 	Detail DetailLevel `json:"detail_level"`
 

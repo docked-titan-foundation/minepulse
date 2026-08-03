@@ -239,6 +239,20 @@ func (m tuiModel) moneroBody() string {
 	s := m.snap
 	c := s.Cluster
 
+	// Identity: where the work is going, before anything about how much of it
+	// there is (specs/007). Divergence is a warning, not a footnote: it is the
+	// case where this one line cannot describe every miner.
+	if e := s.Endpoint; e != nil {
+		b.WriteString(headSt.Render(PoolLine(e)))
+		if e.Diverged {
+			b.WriteString(warnSt.Render("  ! miners disagree on the pool"))
+		}
+		if e.Basis != "" {
+			b.WriteString("\n" + dimStyle.Render(e.Basis))
+		}
+		b.WriteString("\n\n")
+	}
+
 	// Header: cluster totals. Free CPU is a figure here rather than a gauge —
 	// the bar that answers "which node is tight" belongs on the rows, where the
 	// comparison is (specs/006).

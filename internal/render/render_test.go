@@ -37,6 +37,12 @@ func sampleSnapshot() *model.Snapshot {
 			},
 		},
 		Pool: &model.PoolStats{ReportedHashrate: 662, AmountDueXMR: 0.00312, AmountPaidXMR: 0.184},
+		Endpoint: &model.PoolEndpoint{
+			URL: "pool.supportxmr.com:443", IP: "116.202.180.221",
+			Brand: "SupportXMR", Mode: model.ModeShared,
+			Locality: model.LocalityExternal, Basis: "public address, no cluster object matches",
+			Diverged: true,
+		},
 	}
 	s.Summarize()
 	return s
@@ -180,5 +186,27 @@ func TestCPUBar(t *testing.T) {
 	// output rather than the plain text, since that is where it lives.
 	if cpuBar(10, 8) == cpuBar(50, 8) {
 		t.Error("a starved node and an idle one must not render identically")
+	}
+}
+
+// Every field of the identity line degrades on its own, so a pool minepulse only
+// half-recognizes still produces a line rather than nothing (007-FR-001).
+func TestPoolLine(t *testing.T) {
+	full := &model.PoolEndpoint{
+		URL: "mining-pool.bitcoin.svc:3333", IP: "10.43.7.12",
+		Brand: "public-pool", Mode: model.ModeSolo, Locality: model.LocalityInternal,
+	}
+	if got, want := PoolLine(full), "[internal] mining-pool.bitcoin.svc:3333 - public-pool - solo - 10.43.7.12"; got != want {
+		t.Errorf("PoolLine =\n%s\nwant\n%s", got, want)
+	}
+
+	// Nothing known but the address: four marks, still a line.
+	bare := &model.PoolEndpoint{URL: "10.43.7.12:3333", Locality: model.LocalityUnknown, Mode: model.ModeUnknown}
+	if got, want := PoolLine(bare), "[—] 10.43.7.12:3333 - — - — - —"; got != want {
+		t.Errorf("PoolLine(bare) = %q, want %q", got, want)
+	}
+
+	if got := PoolLine(nil); got != "" {
+		t.Errorf("PoolLine(nil) = %q, want empty", got)
 	}
 }

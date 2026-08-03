@@ -34,6 +34,9 @@ type poolPod struct {
 	running   bool
 	start     time.Time
 	apiPort   int
+	podIP     string
+	labels    map[string]string
+	stratum   int
 }
 
 // fingerprint decides whether a pod is a Bitcoin solo pool and which
@@ -70,6 +73,9 @@ func fingerprint(p *corev1.Pod, portOverride int) (poolPod, bool) {
 		image:     c.Image,
 		phase:     string(p.Status.Phase),
 		apiPort:   apiPort(c, portOverride),
+		podIP:     p.Status.PodIP,
+		labels:    p.Labels,
+		stratum:   stratumPort(c),
 	}
 	for i := range p.Status.ContainerStatuses {
 		cs := &p.Status.ContainerStatuses[i]
@@ -99,6 +105,21 @@ func isChartPool(p *corev1.Pod, c *corev1.Container) bool {
 		}
 	}
 	return false
+}
+
+// defaultStratumPort is what both implementations listen on when the container
+// declares no port named "stratum".
+const defaultStratumPort = 3333
+
+// stratumPort is where miners actually connect — the port the identity line
+// reports, as distinct from the API port minepulse itself reads.
+func stratumPort(c *corev1.Container) int {
+	for _, p := range c.Ports {
+		if p.Name == "stratum" {
+			return int(p.ContainerPort)
+		}
+	}
+	return defaultStratumPort
 }
 
 func apiPort(c *corev1.Container, override int) int {
