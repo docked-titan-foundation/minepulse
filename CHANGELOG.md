@@ -1,3 +1,15 @@
+# [1.4.0](https://github.com/docked-titan-foundation/minepulse/compare/v1.3.0...v1.4.0) (2026-08-03)
+
+
+### Bug Fixes
+
+* **mp:** align the tabs on one presentation standard ([0fae0f6](https://github.com/docked-titan-foundation/minepulse/commit/0fae0f6bc5ddfdefa59400245b2fbff6a784aabb))
+
+
+### Features
+
+* **mp:** read settings from MINEPULSE_* environment variables ([e0649c7](https://github.com/docked-titan-foundation/minepulse/commit/e0649c75b668121898aa8f1e92ed4956a7184d49))
+
 # [1.3.0](https://github.com/docked-titan-foundation/minepulse/compare/v1.2.0...v1.3.0) (2026-08-01)
 
 
