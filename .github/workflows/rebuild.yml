@@ -42,7 +42,7 @@ jobs:
       - if: steps.tag.outputs.skip != 'true'
         uses: ko-build/setup-ko@v0.9
       - if: steps.tag.outputs.skip != 'true'
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@v4.1.2
       - if: steps.tag.outputs.skip != 'true'
         uses: anchore/sbom-action/download-syft@v0
       - if: steps.tag.outputs.skip != 'true'
