@@ -200,14 +200,19 @@ func (m tuiModel) title() string {
 		status)
 }
 
-// box frames the body, widening to the terminal when the content allows it.
+// box frames the body. It hugs the content rather than stretching across the
+// terminal: on a wide screen a short panel framed at 250 columns is mostly
+// border, and the eye has to travel the whole width to find the next value.
 func (m tuiModel) box(body string) string {
 	st := boxSt
-	// Border + padding cost 4 columns; only stretch when nothing would wrap.
-	if avail := m.w - 4; avail > 0 && avail >= lipgloss.Width(body) {
-		st = st.Width(avail)
+	// Style.Width covers the content plus this style's horizontal padding (one
+	// column each side), and the border sits outside it — so a box that hugs
+	// its content asks for content+2, and needs content+4 columns on screen.
+	want := lipgloss.Width(body) + 2
+	if avail := m.w - 2; avail > 0 && avail < want {
+		return st.Render(body) // too narrow to frame neatly; overflow as before
 	}
-	return st.Render(body)
+	return st.Width(want).Render(body)
 }
 
 // body is the active tab's content.
@@ -335,21 +340,37 @@ func footer() string {
 }
 
 // ── small width helpers (styled strings break %-Ns padding) ──────────────────
+//
+// All three measure *display columns*, not bytes: a sparkline of six block
+// characters is 18 bytes but occupies six columns, and byte arithmetic on it
+// both misaligns the following column and can slice a rune in half.
 func truncate(s string, n int) string {
-	if len(s) <= n {
+	if lipgloss.Width(s) <= n {
 		return s
 	}
 	if n <= 1 {
-		return s[:n]
+		return string([]rune(s)[:n])
 	}
-	return s[:n-1] + "…"
+	// Take runes until one more would not leave room for the ellipsis.
+	var b strings.Builder
+	w := 0
+	for _, r := range s {
+		rw := lipgloss.Width(string(r))
+		if w+rw > n-1 {
+			break
+		}
+		b.WriteRune(r)
+		w += rw
+	}
+	return b.String() + "…"
 }
 
 func pad(s string, n int) string {
-	if len(s) >= n {
+	w := lipgloss.Width(s)
+	if w >= n {
 		return s
 	}
-	return s + strings.Repeat(" ", n-len(s))
+	return s + strings.Repeat(" ", n-w)
 }
 
 // padStyled pads based on the plain-text length of an already-styled cell.

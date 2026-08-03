@@ -102,30 +102,34 @@ func streamBitcoin(w io.Writer, v *model.BitcoinView) {
 			}
 			continue
 		}
-		st := p.Stats
-		fmt.Fprintf(w, "  %s (%s) · %s · %s · best %s\n",
-			Hashrate(st.Hashrate1m), orDash(st.HashrateWindow),
-			workerSummary(st), shareSummary(st), Difficulty(st.BestShare))
+		// The same headline the TUI builds, so both outputs report a figure —
+		// or omit it — identically (P2/P12).
+		fmt.Fprintf(w, "  %s\n", headlineMetrics(p.Stats))
 
 		if len(p.Miners) > 0 {
 			// Columns follow the granularity: a device has no worker count or
 			// share total to report, an address has no session to have started.
+			// Same column vocabulary as the TUI (P4-P7, P12): the hashrate head
+			// names its window, shares read N✓/M✗, identities truncate.
 			tw := tabwriter.NewWriter(w, 0, 2, 2, ' ', 0)
+			hash := hashHead(p.Stats)
 			if p.Detail == model.DetailDevice {
-				fmt.Fprintln(tw, "  WORKER\tHASHRATE\tBEST\tLAST SHARE")
+				fmt.Fprintf(tw, "  WORKER\t%s\tBEST\tLAST SHARE\n", hash)
 				for _, m := range p.Miners {
 					fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\n",
-						m.Name, Hashrate(m.Hashrate), Difficulty(m.BestDifficulty), Ago(m.LastSeen))
+						truncate(m.Name, 16), Hashrate(m.Hashrate),
+						Difficulty(m.BestDifficulty), Ago(m.LastSeen))
 				}
 			} else {
-				fmt.Fprintln(tw, "  ADDRESS\tHASHRATE\tWORKERS\tSHARES\tBEST\tLAST SHARE")
+				fmt.Fprintf(tw, "  ADDRESS\t%s\tWORKERS\tSHARES\tBEST\tLAST SHARE\n", hash)
 				for _, m := range p.Miners {
 					workers := "—"
 					if m.Workers >= 0 {
 						workers = fmt.Sprintf("%d", m.Workers)
 					}
 					fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\t%s\t%s\n",
-						ShortAddress(m.Name), Hashrate(m.Hashrate), workers, Count(m.Shares),
+						ShortAddress(m.Name), Hashrate(m.Hashrate), workers,
+						Shares(m.Shares, model.Unknown),
 						Difficulty(m.BestDifficulty), Ago(m.LastSeen))
 				}
 			}

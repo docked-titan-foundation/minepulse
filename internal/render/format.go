@@ -48,6 +48,23 @@ func Difficulty(d float64) string {
 	}
 }
 
+// Shares formats accepted/rejected shares the one way they are written across
+// the dashboard (standard P6): "42✓/2✗". A source that does not report rejects
+// gets the accepted half alone — never "42✓/0✗", which would claim a clean run
+// nobody measured. Both unknown renders as the unavailable mark.
+func Shares(good, bad float64) string {
+	switch {
+	case good < 0 && bad < 0:
+		return "—"
+	case bad < 0:
+		return Count(good) + "✓"
+	case good < 0:
+		return "—/" + Count(bad) + "✗"
+	default:
+		return Count(good) + "✓/" + Count(bad) + "✗"
+	}
+}
+
 // Count formats a share count, which ckpool reports as difficulty-weighted
 // floats rather than integers. Unknown (<0) renders as "—".
 func Count(v float64) string {

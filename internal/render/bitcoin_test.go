@@ -65,7 +65,7 @@ func TestBitcoinBodyDeviceDetail(t *testing.T) {
 // than implying the devices vanished.
 func TestBitcoinBodyAddressDetail(t *testing.T) {
 	out := bitcoinBody(&model.BitcoinView{Scope: "all namespaces", Pools: []model.BitcoinPool{addressPool()}})
-	for _, want := range []string{"ckpool", "480.00 TH/s", "1 users", "2 workers (1 idle)", "ADDRESS", "via logs", "per-device detail unavailable"} {
+	for _, want := range []string{"ckpool", "480.00 TH/s", "1 user", "2 workers (1 idle)", "ADDRESS", "via logs", "per-device detail unavailable"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("address view missing %q\n---\n%s", want, out)
 		}
@@ -140,6 +140,26 @@ func TestBitcoinBodyBothPools(t *testing.T) {
 	}
 	if !strings.Contains(out, "searched all namespaces") {
 		t.Errorf("the searched scope must be stated\n---\n%s", out)
+	}
+}
+
+// P6: one share format everywhere, and no invented zeros.
+func TestShares(t *testing.T) {
+	tests := []struct {
+		good, bad float64
+		want      string
+	}{
+		{12483, 3, "12483✓/3✗"},
+		{42, 0, "42✓/0✗"},
+		{480, model.Unknown, "480✓"},        // public-pool reports no rejects
+		{model.Unknown, model.Unknown, "—"}, // nothing known
+		{model.Unknown, 2, "—/2✗"},          // rejects only
+		{2_500_000, 1, "2.50M✓/1✗"},         // large counts stay readable
+	}
+	for _, tt := range tests {
+		if got := Shares(tt.good, tt.bad); got != tt.want {
+			t.Errorf("Shares(%v, %v) = %q, want %q", tt.good, tt.bad, got, tt.want)
+		}
 	}
 }
 

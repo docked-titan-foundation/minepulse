@@ -24,6 +24,11 @@ const (
 // rather than to the pod's log stream (research R1a).
 const ckpoolNoStatsRemedy = "ckpool writes stats to its logfile, not stdout — tail /var/lib/ckpool/logs/ckpool.log into the pod log (chart sidecar), or run public-pool for a stats API"
 
+// hintAddressForWorkers is guidance rather than a fault: public-pool cannot list
+// the addresses mining to it, so per-worker rows need one naming the payout
+// address. It renders as a remedy, not a warning.
+const hintAddressForWorkers = "pass --btc-address <your payout address> for per-worker rows"
+
 // detectTTL is how long a discovery result is reused. Pools are Deployments that
 // move rarely, and a cluster-wide pod list every tick would be the one way this
 // read-only tool could weigh on the API server (Constitution II: don't perturb
@@ -150,6 +155,11 @@ func (c *btcCollector) gatherPool(ctx context.Context, pp *poolPod, now time.Tim
 	}
 
 	out.Note = note
+	if note == hintAddressForWorkers {
+		// Guidance, not a fault: carry it as a remedy so it does not read as a
+		// warning about a pool that is working fine (standard P8).
+		out.Note, out.Remedy = "", note
+	}
 	if pp.impl == model.ImplCkpool && stats == nil {
 		out.Remedy = ckpoolNoStatsRemedy
 	}
@@ -196,8 +206,9 @@ func (c *btcCollector) gatherPublicPool(ctx context.Context, pp *poolPod) (
 		if poolStats == nil {
 			return nil, nil, model.DetailTotals, "public-pool API unreachable", warns
 		}
-		return poolStats, nil, model.DetailTotals,
-			"pool-wide totals (cached up to 5m) — pass --btc-address for per-worker rows", warns
+		// Not a problem, an instruction: the panel is complete for what it can
+		// know without a payout address. gatherPool turns this into a remedy.
+		return poolStats, nil, model.DetailTotals, hintAddressForWorkers, warns
 	}
 
 	body, err := c.k.proxyGetIn(ctx, pp.namespace, pp.pod, pp.apiPort,
