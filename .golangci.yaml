@@ -1,32 +1,45 @@
+version: "2"
 run:
   timeout: 5m
-
 linters:
   enable:
-    - govet
-    - staticcheck
-    - errcheck
-    - ineffassign
-    - unused
-    - gofmt
-    - goimports
     - misspell
     - revive
     - unconvert
-
-linters-settings:
-  goimports:
-    local-prefixes: github.com/docked-titan-foundation/minepulse
-  misspell:
-    locale: US
-    # ckpool's own JSON key is "authorised" (its author writes British English).
-    # The struct tag has to match the wire format byte for byte, so this word is
-    # data, not prose. Go identifiers around it still use US spelling.
-    ignore-words:
-      - authorised
-
-issues:
-  exclude-rules:
-    # Fixture-driven tests and the mock may keep illustrative unused fields.
-    - path: _test\.go
-      linters: [errcheck]
+  settings:
+    misspell:
+      locale: US
+      # ckpool's own JSON key is "authorised" (its author writes British English).
+      # The struct tag has to match the wire format byte for byte, so this word is
+      # data, not prose. Go identifiers around it still use US spelling.
+      ignore-rules:
+        - authorised
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+        path: _test\.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/docked-titan-foundation/minepulse
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
