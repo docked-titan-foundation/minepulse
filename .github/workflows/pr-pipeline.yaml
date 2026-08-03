@@ -30,7 +30,7 @@ jobs:
       - name: build
         run: go build -trimpath -o /dev/null .
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
 

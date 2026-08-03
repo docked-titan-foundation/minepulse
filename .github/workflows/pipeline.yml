@@ -49,7 +49,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ steps.token.outputs.token }}
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with: { node-version: "24" }
 
       # Sign the version commit-back with the release bot's GPG key so it shows
