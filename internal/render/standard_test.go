@@ -1,6 +1,7 @@
 package render
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -11,28 +12,32 @@ import (
 	"github.com/docked-titan-foundation/minepulse/internal/model"
 )
 
-// moneroBodyGolden is the Monero tab's body, exactly as it rendered before the
-// presentation standard (specs/004) was applied to the Bitcoin tab.
+// moneroBodyGolden is the Monero tab's body as the ruled grid (specs/005)
+// renders it.
 //
-// FR-001 says the reference tab does not move. This pins it: any change to the
-// Monero renderer — including one made "while tidying" the shared helpers it
-// happens to use — fails here rather than reaching a terminal.
+// 004-FR-001 froze this tab byte-for-byte; 005-FR-008 supersedes that freeze —
+// the operator asked for the tables to change, and this tab holds the primary
+// one. The guard is re-pinned rather than dropped: the tab still may not move
+// by accident, including "while tidying" a shared helper it happens to use.
+//
+// Two properties to notice, both of which the previous hardcoded widths got
+// wrong. Columns are sized to their content, so STATE fits a real phase and
+// HASH/60s no longer reserves four columns nothing uses. And the rules line up
+// across a row with a sparkline and a row without: widths are display columns,
+// so the 6-rune (18-byte) trace and the dotted placeholder that stands in for a
+// node with no history both measure 6.
 const moneroBodyGolden = "cluster  2/2 mining · 617 H/s · 42 shares✓ · miner 5000m\n" +
 	"\n" +
 	"node CPU free ███░░░░░░░░░░░░░░░░░░░░░ 12%\n" +
 	"\n" +
-	"NODE         STATE             HASH/60s    THR     SHARES    MINER   FREE  CPU-FREE ~2m   POOL\n" +
-	// The POOL column lines up across rows with and without a sparkline: the
-	// width helpers measure display columns, so the 6-rune (18-byte) sparkline
-	// is padded to its 14-column cell like any other value. Before that fix this
-	// row's POOL started flush against the sparkline while the next row's was
-	// aligned — the one change to this tab since it became the reference.
-	"andromeda    Running            377 H/s    6/8     42✓/2✗    5000m    12%  ▃▃▂▁▂▃         pool.supportxmr.com:443\n" +
-	"orion        DONATE⚠            240 H/s    4/6      0✓/0✗      n/a    n/a                 donate.v2.xmrig.com:3333\n" +
+	"NODE      │ STATE   │ HASH/60s │ THR │ SHARES │ MINER │ FREE │ CPU-FREE ~2m │ POOL\n" +
+	"──────────┼─────────┼──────────┼─────┼────────┼───────┼──────┼──────────────┼─────────────────────────\n" +
+	"andromeda │ Running │  377 H/s │ 6/8 │ 42✓/2✗ │ 5000m │  12% │ ▃▃▂▁▂▃       │ pool.supportxmr.com:443\n" +
+	"orion     │ DONATE⚠ │  240 H/s │ 4/6 │  0✓/0✗ │     — │    — │ ······       │ donate.v2.xmrig.com:3333\n" +
 	"\n" +
 	"pool  662 H/s reported · due 0.003120 XMR · paid 0.184000 XMR · last share —"
 
-func TestMoneroTabIsUnchanged(t *testing.T) {
+func TestMoneroTabIsPinned(t *testing.T) {
 	snap := sampleSnapshot()
 	// A Bitcoin view must not leak into the Monero body either.
 	snap.Bitcoin = &model.BitcoinView{Scope: "all namespaces", Pools: []model.BitcoinPool{addressPool()}}
@@ -40,34 +45,52 @@ func TestMoneroTabIsUnchanged(t *testing.T) {
 
 	got := stripANSI(m.body())
 	if got != moneroBodyGolden {
-		t.Errorf("the Monero tab moved (FR-001)\n--- want\n%s\n--- got\n%s", moneroBodyGolden, got)
+		t.Errorf("the Monero tab moved (005-FR-008)\n--- want\n%s\n--- got\n%s", moneroBodyGolden, got)
 	}
 }
 
-// P4: a table column starts at the same display column on every row, whether or
-// not the cells before it contain multi-byte glyphs. This is what the width
-// helpers exist for — a sparkline is 18 bytes and 6 columns wide, and measuring
-// the wrong one ragged the POOL column for rows that had CPU history.
+// P4/P13: every rule in a table sits at the same display column on every line
+// of it, whether or not the cells before it contain multi-byte glyphs. This is
+// what the width helpers exist for — a sparkline is 18 bytes and 6 columns
+// wide, and measuring the wrong one ragged the columns after it on any row that
+// had CPU history.
 func TestNodeTableColumnsAlign(t *testing.T) {
-	snap := sampleSnapshot()
-	var starts []int
-	for i := range snap.Nodes {
-		row := stripANSI(renderNodeRow(snap.Nodes[i]))
-		idx := strings.Index(row, "pool.supportxmr.com")
-		if idx < 0 {
-			idx = strings.Index(row, "donate.v2.xmrig.com")
-		}
-		if idx < 0 {
-			t.Fatalf("no POOL cell in row %q", row)
-		}
-		starts = append(starts, lipgloss.Width(row[:idx]))
+	assertRulesAlign(t, nodeTable(sampleSnapshot().Nodes))
+}
+
+// assertRulesAlign checks a rendered table's grid: every line carries its rules
+// at identical display columns, and the head rule crosses each of them.
+func assertRulesAlign(t *testing.T, rendered string) {
+	t.Helper()
+	lines := strings.Split(strings.TrimRight(stripANSI(rendered), "\n"), "\n")
+	if len(lines) < 3 {
+		t.Fatalf("a table is at least a head, a rule and a row, got %d line(s):\n%s", len(lines), rendered)
 	}
-	for i := 1; i < len(starts); i++ {
-		if starts[i] != starts[0] {
-			t.Errorf("POOL column starts at %d on row %d but %d on row 0 — the sparkline cell is not padded to its width",
-				starts[i], i, starts[0])
+
+	want := rulePositions(lines[0], colSep)
+	if len(want) == 0 {
+		t.Fatalf("no column rules in the head row: %q", lines[0])
+	}
+	if got := rulePositions(lines[1], ruleCross); !slices.Equal(got, want) {
+		t.Errorf("the head rule crosses at %v, but the columns divide at %v\n%s", got, want, rendered)
+	}
+	for i, l := range lines[2:] {
+		if got := rulePositions(l, colSep); !slices.Equal(got, want) {
+			t.Errorf("row %d rules at %v, want %v\n%s", i, got, want, rendered)
 		}
 	}
+}
+
+// rulePositions is where mark falls in a line, measured in display columns so a
+// multi-byte cell before it does not shift the answer.
+func rulePositions(line, mark string) []int {
+	var at []int
+	for i, r := range []rune(line) {
+		if string(r) == mark {
+			at = append(at, lipgloss.Width(string([]rune(line)[:i])))
+		}
+	}
+	return at
 }
 
 // Width helpers must count display columns, not bytes, and must never slice a
@@ -110,10 +133,8 @@ func TestBitcoinTabFollowsTheStandard(t *testing.T) {
 		}
 	}
 
-	// P7: one unavailable mark on this tab. "n/a" is the Monero tab's exception.
-	if strings.Contains(body, "n/a") {
-		t.Errorf("P7: the Bitcoin tab must use — for unavailable, found n/a\n---\n%s", body)
-	}
+	// P7: one unavailable mark — see TestNoSecondSpellingOfUnknown, which now
+	// holds every mode to it rather than this tab alone.
 
 	// P5: an averaged hashrate column names its window; an instantaneous one
 	// must not borrow one it does not have.
@@ -152,6 +173,43 @@ func TestBitcoinTabFollowsTheStandard(t *testing.T) {
 	// P9: one blank line between panels, as between Monero's sections.
 	if strings.Contains(body, "\n\n\n") {
 		t.Errorf("P9: panels are separated by exactly one blank line\n---\n%s", body)
+	}
+
+	// P13: both tabs' tables are the same grid, drawn by the same renderer.
+	for _, p := range view.Pools {
+		assertRulesAlign(t, minerTable(&p))
+	}
+}
+
+// P7: one mark for unavailable, in every mode. This is the rule 004 had to
+// exempt the Monero tab from, because FR-001 froze the tab and the tab said
+// "n/a"; 005 lifted the freeze, so the exemption goes with it and the check
+// widens from one tab to everything a reader sees.
+//
+// `json` is deliberately absent: it is a data contract, encodes unknown as a
+// negative number, and P12 exempts it.
+func TestNoSecondSpellingOfUnknown(t *testing.T) {
+	snap := sampleSnapshot()
+	// A node with no CPU data at all: the case that used to print "n/a".
+	snap.Nodes = append(snap.Nodes, model.NodeStatus{Node: "draco", Phase: "CrashLoopBackOff"})
+	snap.Bitcoin = &model.BitcoinView{
+		Scope: "all namespaces",
+		Pools: []model.BitcoinPool{devicePool(), addressPool()},
+	}
+	snap.Summarize()
+
+	var stream strings.Builder
+	Stream(&stream, snap)
+
+	for name, out := range map[string]string{
+		"monero tab": tuiModel{snap: snap, updated: time.Now(), tab: tabMonero}.View(),
+		"btc tab":    tuiModel{snap: snap, updated: time.Now(), tab: tabBitcoin}.View(),
+		"stream":     stream.String(),
+	} {
+		if strings.Contains(stripANSI(out), "n/a") {
+			t.Errorf("P7: %s spells unavailable as n/a; the one mark is %q\n---\n%s",
+				name, unavailable, out)
+		}
 	}
 }
 

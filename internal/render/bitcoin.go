@@ -85,7 +85,7 @@ func headlineMetrics(s *model.BitcoinStats) string {
 	if s.HashrateWindow != "" && s.HashrateWindow != "now" && s.HashrateWindow != "pool" {
 		parts[0] += " (" + s.HashrateWindow + ")"
 	}
-	if w := workerSummary(s); w != "workers —" {
+	if w := workerSummary(s); w != noWorkers {
 		parts = append(parts, w)
 	}
 	if s.Accepted >= 0 || s.Rejected >= 0 {
@@ -133,6 +133,10 @@ func sourceLabel(p *model.BitcoinPool) string {
 	}
 }
 
+// noWorkers is what workerSummary returns when the source counts neither users
+// nor workers — a sentinel the headline drops rather than printing (P2).
+const noWorkers = "workers " + unavailable
+
 func workerSummary(s *model.BitcoinStats) string {
 	parts := make([]string, 0, 3)
 	if s.Users >= 0 {
@@ -146,7 +150,7 @@ func workerSummary(s *model.BitcoinStats) string {
 		parts = append(parts, w)
 	}
 	if len(parts) == 0 {
-		return "workers —"
+		return noWorkers
 	}
 	return strings.Join(parts, " · ")
 }
@@ -179,36 +183,49 @@ func chainSummary(s *model.BitcoinStats) string {
 	return strings.Join(parts, " · ")
 }
 
+// workerColMax bounds the worker-name column, as nodeColMax bounds the Monero
+// tab's; payout addresses are already shortened by ShortAddress.
+const workerColMax = 20
+
 // minerTable lists per-miner rows at whichever granularity the source reached:
 // devices for public-pool, payout addresses for ckpool. Identity columns left,
-// numbers right, hashrate heads naming their window (P4/P5).
+// numbers right, hashrate heads naming their window (P4/P5), laid out by the
+// shared grid so both tabs' tables are ruled the same way (P13).
 func minerTable(p *model.BitcoinPool) string {
-	var b strings.Builder
 	hash := hashHead(p.Stats)
 
 	if p.Detail == model.DetailDevice {
-		fmt.Fprintf(&b, "%-16s %12s %10s %10s %11s\n",
-			"WORKER", hash, "BEST", "UP", "LAST SHARE")
+		t := newTable(
+			column{"WORKER", alignLeft},
+			column{hash, alignRight},
+			column{"BEST", alignRight},
+			column{"UP", alignRight},
+			column{"LAST SHARE", alignRight},
+		)
 		for _, m := range p.Miners {
-			fmt.Fprintf(&b, "%-16s %12s %10s %10s %11s\n",
-				truncate(m.Name, 16), Hashrate(m.Hashrate), Difficulty(m.BestDifficulty),
-				Dur(durSince(m.StartTime)), Ago(m.LastSeen))
+			t.add(truncate(m.Name, workerColMax), Hashrate(m.Hashrate),
+				Difficulty(m.BestDifficulty), Dur(durSince(m.StartTime)), Ago(m.LastSeen))
 		}
-		return b.String()
+		return t.render()
 	}
 
-	fmt.Fprintf(&b, "%-16s %12s %8s %12s %10s %11s\n",
-		"ADDRESS", hash, "WORKERS", "SHARES", "BEST", "LAST SHARE")
+	t := newTable(
+		column{"ADDRESS", alignLeft},
+		column{hash, alignRight},
+		column{"WORKERS", alignRight},
+		column{"SHARES", alignRight},
+		column{"BEST", alignRight},
+		column{"LAST SHARE", alignRight},
+	)
 	for _, m := range p.Miners {
-		workers := "—"
+		workers := unavailable
 		if m.Workers >= 0 {
 			workers = fmt.Sprintf("%d", m.Workers)
 		}
-		fmt.Fprintf(&b, "%-16s %12s %8s %12s %10s %11s\n",
-			ShortAddress(m.Name), Hashrate(m.Hashrate), workers,
+		t.add(ShortAddress(m.Name), Hashrate(m.Hashrate), workers,
 			Shares(m.Shares, model.Unknown), Difficulty(m.BestDifficulty), Ago(m.LastSeen))
 	}
-	return b.String()
+	return t.render()
 }
 
 // hashHead names the averaging window in the column head, or leaves it off when
@@ -223,7 +240,7 @@ func hashHead(s *model.BitcoinStats) string {
 
 func orDash(s string) string {
 	if s == "" {
-		return "—"
+		return unavailable
 	}
 	return s
 }

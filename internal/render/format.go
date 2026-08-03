@@ -6,11 +6,18 @@ import (
 	"time"
 )
 
-// Hashrate formats H/s with a sensible unit. Unknown (<0) renders as "—". The
-// scale runs to PH/s so a Bitcoin ASIC and a CPU miner read the same way.
+// unavailable is how every panel, column and output mode spells "this source
+// does not report it" (standard P7). One mark, no exceptions — a second
+// spelling of "unknown" is what the standard exists to prevent, and the Monero
+// tab spent one feature cycle as that exception because a freeze outranked it.
+const unavailable = "—"
+
+// Hashrate formats H/s with a sensible unit. Unknown (<0) renders as the
+// unavailable mark. The scale runs to PH/s so a Bitcoin ASIC and a CPU miner
+// read the same way.
 func Hashrate(hs float64) string {
 	if hs < 0 {
-		return "—"
+		return unavailable
 	}
 	switch {
 	case hs >= 1e15:
@@ -29,10 +36,10 @@ func Hashrate(hs float64) string {
 }
 
 // Difficulty formats a share difficulty with an SI suffix (Bitcoin shares run
-// from thousands to trillions). Unknown (<0) renders as "—".
+// from thousands to trillions). Unknown (<0) renders as the unavailable mark.
 func Difficulty(d float64) string {
 	if d < 0 {
-		return "—"
+		return unavailable
 	}
 	switch {
 	case d >= 1e12:
@@ -55,21 +62,21 @@ func Difficulty(d float64) string {
 func Shares(good, bad float64) string {
 	switch {
 	case good < 0 && bad < 0:
-		return "—"
+		return unavailable
 	case bad < 0:
 		return Count(good) + "✓"
 	case good < 0:
-		return "—/" + Count(bad) + "✗"
+		return unavailable + "/" + Count(bad) + "✗"
 	default:
 		return Count(good) + "✓/" + Count(bad) + "✗"
 	}
 }
 
 // Count formats a share count, which ckpool reports as difficulty-weighted
-// floats rather than integers. Unknown (<0) renders as "—".
+// floats rather than integers. Unknown (<0) renders as the unavailable mark.
 func Count(v float64) string {
 	if v < 0 {
-		return "—"
+		return unavailable
 	}
 	if v >= 1e6 {
 		return fmt.Sprintf("%.2fM", v/1e6)
@@ -96,10 +103,11 @@ func durSince(t time.Time) time.Duration {
 	return time.Since(t)
 }
 
-// Pct formats a percentage; negative means unavailable.
+// Pct formats a percentage; negative means unavailable, which is the one mark
+// the standard allows (P7).
 func Pct(p float64) string {
 	if p < 0 {
-		return "n/a"
+		return unavailable
 	}
 	return fmt.Sprintf("%.0f%%", p)
 }
@@ -110,7 +118,7 @@ func XMR(v float64) string { return fmt.Sprintf("%.6f XMR", v) }
 // Dur formats a duration compactly (e.g. 3h12m, 45s).
 func Dur(d time.Duration) string {
 	if d <= 0 {
-		return "—"
+		return unavailable
 	}
 	d = d.Round(time.Minute)
 	if d < time.Minute {
@@ -127,7 +135,7 @@ func Dur(d time.Duration) string {
 // Ago formats how long ago t was.
 func Ago(t time.Time) string {
 	if t.IsZero() {
-		return "—"
+		return unavailable
 	}
 	return Dur(time.Since(t)) + " ago"
 }

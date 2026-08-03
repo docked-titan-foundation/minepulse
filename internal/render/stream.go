@@ -123,7 +123,7 @@ func streamBitcoin(w io.Writer, v *model.BitcoinView) {
 			} else {
 				fmt.Fprintf(tw, "  ADDRESS\t%s\tWORKERS\tSHARES\tBEST\tLAST SHARE\n", hash)
 				for _, m := range p.Miners {
-					workers := "—"
+					workers := unavailable
 					if m.Workers >= 0 {
 						workers = fmt.Sprintf("%d", m.Workers)
 					}
@@ -146,14 +146,14 @@ func streamBitcoin(w io.Writer, v *model.BitcoinView) {
 
 func minerCPU(n model.NodeStatus) string {
 	if n.CPU == nil {
-		return "n/a"
+		return unavailable
 	}
 	return fmt.Sprintf("%dm", n.CPU.MinerMilli)
 }
 
 func nodeFree(n model.NodeStatus) string {
 	if n.CPU == nil {
-		return "n/a"
+		return unavailable
 	}
 	return Pct(n.CPU.FreePct)
 }
@@ -162,5 +162,5 @@ func note(n model.NodeStatus) string {
 	if n.Note != "" {
 		return n.Note
 	}
-	return "—"
+	return unavailable
 }

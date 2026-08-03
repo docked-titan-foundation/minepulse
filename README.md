@@ -170,7 +170,7 @@ narrows the search to the miner's namespace and says so instead of failing.
 The richest per-node stats come from the miner's XMRig HTTP API when it's enabled
 (`httpApi.enabled: true`); otherwise minepulse falls back to parsing miner logs and
 marks those nodes `(logs)`. It never crashes on a missing source — metrics-server
-down shows CPU as `n/a`, a pool outage marks the panel stale.
+down shows CPU as `—`, a pool outage marks the panel stale.
 
 ## Development
 

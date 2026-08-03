@@ -154,7 +154,7 @@ func TestSparkline(t *testing.T) {
 }
 
 func TestGaugeUnavailable(t *testing.T) {
-	if got := gauge("x", -1, 10); !strings.Contains(got, "n/a") {
-		t.Errorf("gauge(-1) = %q, want n/a", got)
+	if got := gauge("x", -1, 10); !strings.Contains(got, unavailable) {
+		t.Errorf("gauge(-1) = %q, want the unavailable mark", got)
 	}
 }
