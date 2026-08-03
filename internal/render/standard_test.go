@@ -12,28 +12,24 @@ import (
 	"github.com/docked-titan-foundation/minepulse/internal/model"
 )
 
-// moneroBodyGolden is the Monero tab's body as the ruled grid (specs/005)
-// renders it.
+// moneroBodyGolden is the Monero tab's body as it renders today: the ruled grid
+// from specs/005, with the per-node CPU bar from specs/006.
 //
-// 004-FR-001 froze this tab byte-for-byte; 005-FR-008 supersedes that freeze —
-// the operator asked for the tables to change, and this tab holds the primary
-// one. The guard is re-pinned rather than dropped: the tab still may not move
-// by accident, including "while tidying" a shared helper it happens to use.
+// 004-FR-001 froze this tab byte-for-byte; 005-FR-008 superseded that freeze.
+// The guard survives it: the tab may not move by accident, including "while
+// tidying" a shared helper it happens to use.
 //
-// Two properties to notice, both of which the previous hardcoded widths got
-// wrong. Columns are sized to their content, so STATE fits a real phase and
-// HASH/60s no longer reserves four columns nothing uses. And the rules line up
-// across a row with a sparkline and a row without: widths are display columns,
-// so the 6-rune (18-byte) trace and the dotted placeholder that stands in for a
-// node with no history both measure 6.
-const moneroBodyGolden = "cluster  2/2 mining · 617 H/s · 42 shares✓ · miner 5000m\n" +
+// Three properties to notice. Columns are sized to their content, so STATE fits
+// a real phase and HASH/60s does not reserve four columns nothing uses. The
+// rules line up across a row with a bar and a row without, because widths are
+// display columns. And a node with no CPU metrics gets the unavailable mark in
+// NODE CPU FREE rather than an empty trough, which would claim 0% free.
+const moneroBodyGolden = "cluster  2/2 mining · 617 H/s · 42 shares✓ · miner 5000m · node free 12%\n" +
 	"\n" +
-	"node CPU free ███░░░░░░░░░░░░░░░░░░░░░ 12%\n" +
-	"\n" +
-	"NODE      │ STATE   │ HASH/60s │ THR │ SHARES │ MINER │ FREE │ CPU-FREE ~2m │ POOL\n" +
-	"──────────┼─────────┼──────────┼─────┼────────┼───────┼──────┼──────────────┼─────────────────────────\n" +
-	"andromeda │ Running │  377 H/s │ 6/8 │ 42✓/2✗ │ 5000m │  12% │ ▃▃▂▁▂▃       │ pool.supportxmr.com:443\n" +
-	"orion     │ DONATE⚠ │  240 H/s │ 4/6 │  0✓/0✗ │     — │    — │ ······       │ donate.v2.xmrig.com:3333\n" +
+	"NODE      │ STATE   │ HASH/60s │ THR │ SHARES │ MINER │ NODE CPU FREE │ POOL\n" +
+	"──────────┼─────────┼──────────┼─────┼────────┼───────┼───────────────┼─────────────────────────\n" +
+	"andromeda │ Running │  377 H/s │ 6/8 │ 42✓/2✗ │ 5000m │ █░░░░░░░ 12%  │ pool.supportxmr.com:443\n" +
+	"orion     │ DONATE⚠ │  240 H/s │ 4/6 │  0✓/0✗ │     — │ —             │ donate.v2.xmrig.com:3333\n" +
 	"\n" +
 	"pool  662 H/s reported · due 0.003120 XMR · paid 0.184000 XMR · last share —"
 
@@ -45,7 +41,7 @@ func TestMoneroTabIsPinned(t *testing.T) {
 
 	got := stripANSI(m.body())
 	if got != moneroBodyGolden {
-		t.Errorf("the Monero tab moved (005-FR-008)\n--- want\n%s\n--- got\n%s", moneroBodyGolden, got)
+		t.Errorf("the Monero tab moved (005-FR-008, 006-SC-006)\n--- want\n%s\n--- got\n%s", moneroBodyGolden, got)
 	}
 }
 

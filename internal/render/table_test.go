@@ -36,7 +36,7 @@ func TestTableAlignsStyledAndMultiByteCells(t *testing.T) {
 		column{"TREND", alignLeft},
 		column{"SHARES", alignRight},
 	)
-	tb.add(badSt.Render("DONATE⚠"), sparkSt.Render("▃▃▂▁▂▃"), "42✓/2✗")
+	tb.add(badSt.Render("DONATE⚠"), goodSt.Render("▃▃▂▁▂▃"), "42✓/2✗")
 	tb.add(goodSt.Render("Running"), dots(6), "0✓/0✗")
 
 	assertRulesAlign(t, tb.render())

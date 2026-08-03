@@ -153,8 +153,32 @@ func TestSparkline(t *testing.T) {
 	}
 }
 
-func TestGaugeUnavailable(t *testing.T) {
-	if got := gauge("x", -1, 10); !strings.Contains(got, unavailable) {
-		t.Errorf("gauge(-1) = %q, want the unavailable mark", got)
+// The bar's thresholds are what the cluster gauge's were, and its no-metrics
+// case is the unavailable mark — an empty trough would read as "0% free", which
+// is a much more alarming claim than "we could not measure it" (006-FR-006).
+func TestCPUBar(t *testing.T) {
+	for _, tc := range []struct {
+		pct   float64
+		want  string
+		style string
+	}{
+		{-1, unavailable, ""},
+		{0, "░░░░░░░░ 0%", "bad"},
+		// A node with headroom left never draws an empty trough, however little:
+		// that is the picture a saturated node paints, and they must differ.
+		{10, "█░░░░░░░ 10%", "bad"},
+		{12.5, "█░░░░░░░ 12%", "bad"},
+		{50, "████░░░░ 50%", "good"},
+		{100, "████████ 100%", "good"},
+		{150, "████████ 150%", "good"}, // never overflows its cell
+	} {
+		if got := stripANSI(cpuBar(tc.pct, 8)); got != tc.want {
+			t.Errorf("cpuBar(%v) = %q, want %q", tc.pct, got, tc.want)
+		}
+	}
+	// Color tracks the same thresholds the gauge used; compare the styled
+	// output rather than the plain text, since that is where it lives.
+	if cpuBar(10, 8) == cpuBar(50, 8) {
+		t.Error("a starved node and an idle one must not render identically")
 	}
 }

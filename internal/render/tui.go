@@ -3,6 +3,7 @@ package render
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -141,7 +142,6 @@ var (
 	goodSt    = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
 	warnSt    = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
 	badSt     = lipgloss.NewStyle().Foreground(lipgloss.Color("203"))
-	sparkSt   = lipgloss.NewStyle().Foreground(xmrOrange)
 	tabOnSt   = lipgloss.NewStyle().Foreground(lipgloss.Color("252")).Bold(true)
 	btcOrange = lipgloss.Color("#f7931a")
 	xmrIconSt = lipgloss.NewStyle().Foreground(xmrOrange)
@@ -233,20 +233,22 @@ func (m tuiModel) body() string {
 	return b.String() + m.moneroBody()
 }
 
-// moneroBody is the Monero tab: cluster totals, gauge, nodes, pool, warnings.
+// moneroBody is the Monero tab: cluster totals, nodes, pool, warnings.
 func (m tuiModel) moneroBody() string {
 	var b strings.Builder
 	s := m.snap
 	c := s.Cluster
 
-	// Header: cluster totals + free-CPU gauge.
-	fmt.Fprintf(&b, "%s  %s mining · %s · %s shares✓ · miner %s\n",
+	// Header: cluster totals. Free CPU is a figure here rather than a gauge —
+	// the bar that answers "which node is tight" belongs on the rows, where the
+	// comparison is (specs/006).
+	fmt.Fprintf(&b, "%s  %s mining · %s · %s shares✓ · miner %s · node free %s\n\n",
 		headSt.Render("cluster"),
 		fmt.Sprintf("%d/%d", c.NodesMining, c.NodesTotal),
 		Hashrate(c.TotalHashrate),
 		fmt.Sprintf("%d", c.AcceptedShares),
-		fmt.Sprintf("%dm", c.MinerCPUMilli))
-	b.WriteString("\n" + gauge("node CPU free", c.NodeCPUFreePct, 24) + "\n\n")
+		fmt.Sprintf("%dm", c.MinerCPUMilli),
+		Pct(c.NodeCPUFreePct))
 
 	// Node table.
 	b.WriteString(nodeTable(s.Nodes))
@@ -274,14 +276,9 @@ func (m tuiModel) moneroBody() string {
 const (
 	nodeColMax  = 20
 	stateColMax = 20
-	// sparkCol is the CPU-FREE column's index, the one cell built in two passes.
-	sparkCol = 7
 )
 
-// nodeTable is the Monero tab's node grid. Rows are built first so the dotted
-// placeholder for a node with no CPU history comes out as wide as the real
-// traces beside it — inside a ruled grid an empty cell reads as a broken table
-// (FR-006).
+// nodeTable is the Monero tab's node grid.
 func nodeTable(nodes []model.NodeStatus) string {
 	t := newTable(
 		column{"NODE", alignLeft},
@@ -290,24 +287,11 @@ func nodeTable(nodes []model.NodeStatus) string {
 		column{"THR", alignRight},
 		column{"SHARES", alignRight},
 		column{"MINER", alignRight},
-		column{"FREE", alignRight},
-		column{"CPU-FREE ~2m", alignLeft},
+		column{"NODE CPU FREE", alignLeft},
 		column{"POOL", alignLeft},
 	)
-
-	rows := make([][]string, len(nodes))
-	sparkW := 0
 	for i := range nodes {
-		rows[i] = nodeRow(nodes[i])
-		if w := lipgloss.Width(rows[i][sparkCol]); w > sparkW {
-			sparkW = w
-		}
-	}
-	for _, r := range rows {
-		if r[sparkCol] == "" {
-			r[sparkCol] = dots(sparkW)
-		}
-		t.add(r...)
+		t.add(nodeRow(nodes[i])...)
 	}
 	return t.render()
 }
@@ -340,41 +324,53 @@ func nodeRow(n model.NodeStatus) []string {
 	miner, free := unavailable, unavailable
 	if n.CPU != nil {
 		miner = fmt.Sprintf("%dm", n.CPU.MinerMilli)
-		free = Pct(n.CPU.FreePct)
-	}
-	// Left empty when there is no history: nodeTable fills it once it knows how
-	// wide the other traces came out.
-	spark := ""
-	if n.History != nil {
-		spark = sparkSt.Render(Sparkline(n.History.FreePctSeries(), 0, 100, 14))
+		free = cpuBar(n.CPU.FreePct, cpuBarWidth)
 	}
 
 	return []string{
 		truncate(n.Node, nodeColMax), stateStyled,
-		hash, thr, shares, miner, free, spark, pool,
+		hash, thr, shares, miner, free, pool,
 	}
 }
 
 func isRunning(n model.NodeStatus) bool { return n.Phase == "Running" }
 
-// gauge renders a labeled horizontal bar for a 0..100 percentage, or the
-// unavailable mark when there is no figure to draw.
-func gauge(label string, pct float64, width int) string {
+// cpuBarWidth is how many cells the trough gets. Eight is enough to rank a
+// handful of nodes by eye, and keeps the column (bar, space, percentage) no
+// wider than its own head.
+const cpuBarWidth = 8
+
+// cpuBar draws a 0..100 percentage as a filled trough with the figure beside
+// it, in the thresholds the cluster gauge used before this bar replaced it:
+// green with headroom, amber when tight, red when the node is starved.
+//
+// The percentage stays next to the bar because color may not be the only thing
+// carrying a reading (Constitution: terminal-safe, no reliance on color alone),
+// and because two bars of similar length are quicker to separate by number than
+// by eye. No metrics at all is the unavailable mark — an empty trough would read
+// as "0% free", which is a very different and much more alarming claim.
+func cpuBar(pct float64, width int) string {
 	if pct < 0 {
-		return dimStyle.Render(label + ": " + unavailable)
+		return unavailable
 	}
-	filled := int(pct / 100 * float64(width))
+	// Round rather than truncate, and never let a node with headroom left draw an
+	// empty trough: at 10% free an 8-cell bar truncates to nothing, which is the
+	// same picture a saturated node paints. A sliver is the honest rendering.
+	filled := int(math.Round(pct / 100 * float64(width)))
+	if filled == 0 && pct > 0 {
+		filled = 1
+	}
 	if filled > width {
 		filled = width
 	}
-	bar := strings.Repeat("█", filled) + strings.Repeat("░", width-filled)
 	st := goodSt
 	if pct < 15 {
 		st = badSt
 	} else if pct < 30 {
 		st = warnSt
 	}
-	return fmt.Sprintf("%s %s %s", dimStyle.Render(label), st.Render(bar), st.Render(Pct(pct)))
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", width-filled)
+	return st.Render(bar) + " " + st.Render(Pct(pct))
 }
 
 func footer() string {

@@ -4,7 +4,7 @@
 
 <p align="center">
   <b>A live terminal scope for the Monero miner running in your cluster.</b><br/>
-  Per-node hashrate, threads, shares and pool status; the miner's CPU versus each node's free CPU over time; and pool-side earnings — refreshing until you quit. Read-only, always.
+  Per-node hashrate, threads, shares and pool status; the miner's CPU against each node's free CPU; and pool-side earnings — refreshing until you quit. Read-only, always.
 </p>
 
 <p align="center">
@@ -29,9 +29,9 @@ DaemonSet and answers, continuously, three questions:
 1. **Is every node mining, and how fast?** Per-node hashrate, active/total threads,
    accepted/rejected shares, and pool connection — including a loud flag if a miner
    has silently fallen back to XMRig's **donate pool** instead of yours.
-2. **Is it really only using *idle* CPU?** Per-node miner-CPU vs node free-CPU, with a
-   session **sparkline** so you can watch it take spare cycles and hand them back when
-   real workloads arrive.
+2. **Is it really only using *idle* CPU?** Per-node miner-CPU against a **free-CPU bar**
+   on every row, so the node with no headroom left is the short bar — you can watch the
+   miner take spare cycles and hand them back when real workloads arrive.
 3. **Is it earning anything?** Pool-side reported hashrate, amount due, and total paid.
 
 And, on a second tab, the other coin: **is the Bitcoin solo pool alive?** Press `b` for
@@ -154,7 +154,7 @@ kubectl run cpu-hog --image=busybox --restart=Never \
 kubectl delete pod cpu-hog
 ```
 
-Watch that node's CPU-free sparkline dip while `cpu-hog` runs and recover after it's gone.
+Watch that node's CPU-free bar shorten while `cpu-hog` runs, and refill after it's gone.
 
 ## Access it needs
 
