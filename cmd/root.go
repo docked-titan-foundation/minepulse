@@ -4,8 +4,10 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/docked-titan-foundation/minepulse/internal/config"
 )
@@ -19,10 +21,20 @@ var rootCmd = &cobra.Command{
 
 It shows, continuously, how mining is going across the cluster: per-node hashrate,
 threads, shares and pool status; the miner's CPU versus each node's free CPU over
-time; and pool-side earnings for your wallet. It never changes anything it observes.`,
+time; and pool-side earnings for your wallet. It never changes anything it observes.
+
+Press b for the Bitcoin tab: the solo pool running in the same cluster, found
+without configuration.
+
+Every flag can also be set from the environment as MINEPULSE_<FLAG>, with dashes
+as underscores — MINEPULSE_BTC_ADDRESS, MINEPULSE_TAB, MINEPULSE_NAMESPACE — so
+the values you always pass can live in your shell profile. An explicit flag
+always wins over the environment.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+		applyEnv(cmd)
+
 		// Resolve the default output from whether stdout is a terminal, unless
 		// the user set --output explicitly.
 		if !cmd.Flags().Changed("output") {
@@ -33,6 +45,29 @@ time; and pool-side earnings for your wallet. It never changes anything it obser
 			}
 		}
 	},
+}
+
+// envPrefix namespaces minepulse's environment variables.
+const envPrefix = "MINEPULSE_"
+
+// applyEnv fills any flag the user did not pass from MINEPULSE_<FLAG>, so
+// settings that never change — a BTC payout address, a preferred tab — can live
+// in a shell profile instead of every command line. A flag given explicitly
+// always wins; an unparseable value is reported rather than silently ignored.
+func applyEnv(cmd *cobra.Command) {
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		if f.Changed {
+			return
+		}
+		key := envPrefix + strings.ToUpper(strings.ReplaceAll(f.Name, "-", "_"))
+		val, ok := os.LookupEnv(key)
+		if !ok || val == "" {
+			return
+		}
+		if err := f.Value.Set(val); err != nil {
+			fmt.Fprintf(os.Stderr, "minepulse: %s=%q ignored: %v\n", key, val, err)
+		}
+	})
 }
 
 // Execute runs the root command with the given build version.

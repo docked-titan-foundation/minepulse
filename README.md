@@ -123,6 +123,26 @@ Bitcoin flags, all optional: `--btc-address` (payout address, unlocks per-device
 public-pool), `--btc-namespace` / `--btc-selector` (narrow the search),
 `--btc-api-port` (override the public-pool API port), `--no-btc` (skip it entirely).
 
+**Why `--btc-address` exists.** In solo mining the payout address lives on the *miner* — it
+is the stratum username, and the pool is never configured with it. public-pool's API is
+keyed per address (`/api/client/{address}`) and has no endpoint that lists them, so a
+read-only observer cannot discover yours. One address for all your devices, with distinct
+worker names (`bc1q….bitaxe-01`), gives you a row per device.
+
+### Settings from the environment
+
+Every flag also reads `MINEPULSE_<FLAG>`, dashes as underscores. Put the ones that never
+change in your shell profile:
+
+```bash
+export MINEPULSE_BTC_ADDRESS=bc1qyouraddress…   # per-worker rows, no flag needed
+export MINEPULSE_TAB=bitcoin                     # open on the Bitcoin tab
+export MINEPULSE_NAMESPACE=monero-idle-miner
+```
+
+An explicit flag always beats the environment, and a value the flag cannot parse is
+reported on stderr rather than silently dropped.
+
 ### See it take and yield idle CPU
 
 ```bash

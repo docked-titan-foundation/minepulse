@@ -17,6 +17,18 @@ changes meaning (FR-015).
 
 Existing flags keep their exact current behaviour. `--mock` populates both coins.
 
+## Environment
+
+Every flag also reads `MINEPULSE_<FLAG>` — the flag name upper-cased with dashes as
+underscores (`--btc-address` → `MINEPULSE_BTC_ADDRESS`, `--no-btc` → `MINEPULSE_NO_BTC`).
+
+Precedence: **explicit flag > environment > default**. An empty variable is not a value. A
+value the flag cannot parse is reported on stderr and ignored, never silently dropped.
+
+This exists because of FR-016 and the public-pool discovery ceiling: the payout address
+cannot be auto-detected (upstream returns it from no endpoint), so the operator must supply
+it — but should only have to say it once.
+
 ## Keys (TUI)
 
 | Key | Action |
