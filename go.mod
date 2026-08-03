@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/charmbracelet/bubbletea v1.2.1
-	github.com/charmbracelet/lipgloss v1.0.0
+	github.com/charmbracelet/lipgloss/v2 v2.0.5
 	github.com/spf13/cobra v1.10.2
 	k8s.io/api v0.31.3
 	k8s.io/apimachinery v0.31.3
