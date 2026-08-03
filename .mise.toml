@@ -2,7 +2,7 @@
 go            = "1.23"
 golangci-lint = "1.61.0"
 goreleaser    = "2.4.4"
-cosign        = "2.4.1"
+cosign        = "2.6.4"
 syft          = "1.14.0"
 
 [env]
