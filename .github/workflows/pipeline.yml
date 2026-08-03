@@ -98,7 +98,7 @@ jobs:
         uses: actions/setup-go@v6
         with: { go-version: "1.23" }
       - if: steps.sr.outputs.version != ''
-        uses: ko-build/setup-ko@v0.9
+        uses: ko-build/setup-ko@v0.10
       - if: steps.sr.outputs.version != ''
         uses: sigstore/cosign-installer@v3
       - if: steps.sr.outputs.version != ''
