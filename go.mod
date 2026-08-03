@@ -3,7 +3,7 @@ module github.com/docked-titan-foundation/minepulse
 go 1.23.0
 
 require (
-	github.com/charmbracelet/bubbletea v1.2.1
+	github.com/charmbracelet/bubbletea/v2 v2.0.8
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/spf13/cobra v1.10.2
 	k8s.io/api v0.31.3
