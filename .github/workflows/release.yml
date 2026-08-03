@@ -39,7 +39,7 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
       - run: git checkout "${{ steps.t.outputs.tag }}"
       - uses: actions/setup-go@v6
-        with: { go-version: "1.23" }
+        with: { go-version: "1.26" }
       - uses: ko-build/setup-ko@v0.9
       - uses: sigstore/cosign-installer@v3
       - uses: anchore/sbom-action/download-syft@v0
