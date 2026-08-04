@@ -44,7 +44,7 @@ func bitcoinPool(p *model.BitcoinPool) string {
 	// Identity first: one line cannot describe two pools, so each panel carries
 	// its own (007-FR-008).
 	if e := p.Endpoint; e != nil {
-		b.WriteString(headSt.Render(PoolLine(e)) + "\n")
+		b.WriteString(poolLineStyled(e) + "\n")
 		if e.Basis != "" {
 			b.WriteString(dimStyle.Render(e.Basis) + "\n")
 		}
@@ -154,7 +154,9 @@ func workerSummary(s *model.BitcoinStats) string {
 	if s.Workers >= 0 {
 		w := plural(s.Workers, "worker")
 		if s.WorkersIdle > 0 {
-			w += fmt.Sprintf(" (%d idle)", s.WorkersIdle)
+			// Connected but not hashing — the one worker figure that is a problem
+			// rather than a measurement.
+			w += warnSt.Render(fmt.Sprintf(" (%d idle)", s.WorkersIdle))
 		}
 		parts = append(parts, w)
 	}

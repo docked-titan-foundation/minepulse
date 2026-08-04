@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/docked-titan-foundation/minepulse/internal/config"
 	"github.com/docked-titan-foundation/minepulse/internal/model"
@@ -208,5 +209,62 @@ func TestPoolLine(t *testing.T) {
 
 	if got := PoolLine(nil); got != "" {
 		t.Errorf("PoolLine(nil) = %q, want empty", got)
+	}
+}
+
+// P14: color is a second channel, never the only one. Whatever the styled line
+// paints, stripping the escapes must leave exactly the text `stream` prints —
+// so a monochrome terminal, a pipe and a screen reader all lose nothing.
+func TestStyledPoolLineSaysNothingExtra(t *testing.T) {
+	for _, loc := range []model.Locality{
+		model.LocalityInternal, model.LocalityExternal, model.LocalityUnknown,
+	} {
+		e := &model.PoolEndpoint{
+			URL: "mining-pool.bitcoin.svc:3333", IP: "10.43.7.12",
+			Brand: "public-pool", Mode: model.ModeSolo, Locality: loc,
+		}
+		if got, want := stripANSI(poolLineStyled(e)), PoolLine(e); got != want {
+			t.Errorf("styled line for %q reads %q, want %q", loc, got, want)
+		}
+	}
+	if poolLineStyled(nil) != "" {
+		t.Error("no endpoint, no line")
+	}
+}
+
+// Each locality gets its own color, and "outside the cluster" must not borrow
+// the warning color: for Monero it is the ordinary case, not a fault.
+func TestLocalityColorsAreDistinct(t *testing.T) {
+	in := localityStyle(model.LocalityInternal)
+	out := localityStyle(model.LocalityExternal)
+	unknown := localityStyle(model.LocalityUnknown)
+
+	seen := map[lipgloss.TerminalColor]string{}
+	for name, st := range map[string]lipgloss.Style{
+		"internal": in, "external": out, "unknown": unknown,
+	} {
+		fg := st.GetForeground()
+		if prev, dup := seen[fg]; dup {
+			t.Errorf("%s and %s share a color; the marker stops distinguishing them", name, prev)
+		}
+		seen[fg] = name
+	}
+	if out.GetForeground() == warnSt.GetForeground() {
+		t.Error("external must not use the warning color — it is the normal case, not a fault")
+	}
+}
+
+// A clean run should look calm rather than green, and a node that is not mining
+// when it should be is the thing worth coloring.
+func TestMiningFractionColors(t *testing.T) {
+	if stripANSI(miningFraction(3, 4)) != "3/4" || stripANSI(miningFraction(4, 4)) != "4/4" {
+		t.Error("color must not alter the text")
+	}
+	if miningFraction(4, 4) == miningFraction(3, 4) {
+		t.Error("all-mining and partly-mining must not render identically")
+	}
+	// Nothing installed is not a fault to flag.
+	if miningFraction(0, 0) == miningFraction(0, 1) {
+		t.Error("no nodes at all must not read as a failure")
 	}
 }

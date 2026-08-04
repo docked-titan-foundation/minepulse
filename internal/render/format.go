@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/docked-titan-foundation/minepulse/internal/model"
 )
 
@@ -158,6 +160,43 @@ func PoolLine(e *model.PoolEndpoint) string {
 	return fmt.Sprintf("[%s] %s - %s - %s - %s",
 		locality(e.Locality), orMark(e.URL), orMark(e.Brand),
 		mode(e.Mode), orMark(e.IP))
+}
+
+// poolLineStyled is PoolLine for the TUI: the same text, with color carrying
+// the one judgement the line makes (P14).
+//
+// Green for a pool inside the cluster, blue for one outside it — outside is the
+// ordinary case for Monero and not a fault, so it gets an informational color
+// rather than the warning one. A locality that could not be established is dim,
+// because an unproven claim should recede rather than compete.
+//
+// Everything else is ranked by how much of the reader's attention it deserves:
+// the address is what identifies the pool, so it is bright; the separators and
+// the IP are supporting detail, so they are dim; brand and mode sit in between
+// at the terminal's default color. `stream` keeps the plain PoolLine (P12).
+func poolLineStyled(e *model.PoolEndpoint) string {
+	if e == nil {
+		return ""
+	}
+	sep := dimStyle.Render(" - ")
+	return localityStyle(e.Locality).Bold(true).Render("["+locality(e.Locality)+"]") + " " +
+		headSt.Render(orMark(e.URL)) + sep +
+		orMark(e.Brand) + sep +
+		mode(e.Mode) + sep +
+		dimStyle.Render(orMark(e.IP))
+}
+
+// localityStyle is the color each locality carries: green inside the cluster,
+// blue outside it, dim when it could not be established.
+func localityStyle(l model.Locality) lipgloss.Style {
+	switch l {
+	case model.LocalityInternal:
+		return goodSt
+	case model.LocalityExternal:
+		return infoSt
+	default:
+		return dimStyle
+	}
 }
 
 func locality(l model.Locality) string {

@@ -142,6 +142,10 @@ var (
 	goodSt    = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
 	warnSt    = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
 	badSt     = lipgloss.NewStyle().Foreground(lipgloss.Color("203"))
+	// infoSt marks a fact that is neither good nor bad and still worth seeing —
+	// a pool outside the cluster is the normal case, not a fault, so it must not
+	// borrow the warning color just to stand out.
+	infoSt    = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
 	tabOnSt   = lipgloss.NewStyle().Foreground(lipgloss.Color("252")).Bold(true)
 	btcOrange = lipgloss.Color("#f7931a")
 	xmrIconSt = lipgloss.NewStyle().Foreground(xmrOrange)
@@ -243,7 +247,7 @@ func (m tuiModel) moneroBody() string {
 	// there is (specs/007). Divergence is a warning, not a footnote: it is the
 	// case where this one line cannot describe every miner.
 	if e := s.Endpoint; e != nil {
-		b.WriteString(headSt.Render(PoolLine(e)))
+		b.WriteString(poolLineStyled(e))
 		if e.Diverged {
 			b.WriteString(warnSt.Render("  ! miners disagree on the pool"))
 		}
@@ -258,7 +262,7 @@ func (m tuiModel) moneroBody() string {
 	// comparison is (specs/006).
 	fmt.Fprintf(&b, "%s  %s mining · %s · %s shares✓ · miner %s · node free %s\n\n",
 		headSt.Render("cluster"),
-		fmt.Sprintf("%d/%d", c.NodesMining, c.NodesTotal),
+		miningFraction(c.NodesMining, c.NodesTotal),
 		Hashrate(c.TotalHashrate),
 		fmt.Sprintf("%d", c.AcceptedShares),
 		fmt.Sprintf("%dm", c.MinerCPUMilli),
@@ -329,7 +333,14 @@ func nodeRow(n model.NodeStatus) []string {
 	if n.Mining != nil {
 		hash = Hashrate(n.Mining.Hashrate60s)
 		thr = fmt.Sprintf("%d/%d", n.Mining.ThreadsActive, n.Mining.ThreadsTotal)
-		shares = fmt.Sprintf("%d✓/%d✗", n.Mining.SharesGood, n.Mining.SharesTotal-n.Mining.SharesGood)
+		// Only the rejected half takes color, and only when there is something
+		// to report: a run with no rejects should look calm, not green.
+		rejected := n.Mining.SharesTotal - n.Mining.SharesGood
+		rej := fmt.Sprintf("%d✗", rejected)
+		if rejected > 0 {
+			rej = badSt.Render(rej)
+		}
+		shares = fmt.Sprintf("%d✓/", n.Mining.SharesGood) + rej
 		pool = n.Mining.Pool
 		if n.StatsSource == model.SourceLogs {
 			pool += dimStyle.Render(" (logs)")
@@ -348,6 +359,21 @@ func nodeRow(n model.NodeStatus) []string {
 }
 
 func isRunning(n model.NodeStatus) bool { return n.Phase == "Running" }
+
+// miningFraction colors "3/4 mining" by whether every node that exists is
+// actually mining. The numbers say it too — color only makes the answer
+// reachable without reading them (P14).
+func miningFraction(mining, total int) string {
+	txt := fmt.Sprintf("%d/%d", mining, total)
+	switch {
+	case total == 0:
+		return dimStyle.Render(txt) // nothing installed; not a fault to flag
+	case mining < total:
+		return warnSt.Render(txt)
+	default:
+		return goodSt.Render(txt)
+	}
+}
 
 // cpuBarWidth is how many cells the trough gets. Eight is enough to rank a
 // handful of nodes by eye, and keeps the column (bar, space, percentage) no

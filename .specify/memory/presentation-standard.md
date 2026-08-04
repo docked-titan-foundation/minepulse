@@ -1,11 +1,11 @@
 <!--
 Sync Impact Report
-- Version change: (none) → 1.1.0
-- Bump rationale: extracted from specs/004's plan (v1.0.0, the rule set as shipped) and
-  amended by specs/005 — P4 extended, P13 added, P7's exception removed. MINOR: rules were
-  added and relaxed, none reversed.
-- Amended rules: P4 (columns size themselves), P7 (one unavailable mark, no exceptions)
-- Added rules: P13 (tables are ruled grids)
+- Version change: 1.1.0 → 1.2.0
+- Bump rationale: specs/008 adds P14, which writes down what colour is allowed to mean.
+  MINOR: a rule was added, none reversed. (1.1.0 extracted the set from specs/004's plan and
+  amended it per specs/005 — P4 extended, P13 added, P7's exception removed.)
+- Amended rules: none in 1.2.0
+- Added rules: P14 (colour encodes state and is never the only channel)
 - Templates / docs checked:
   - .specify/memory/constitution.md — ✅ no contradiction; this document is subordinate to it
   - specs/004-tab-presentation-standard/plan.md — ✅ inline copy replaced by a pointer here
@@ -24,8 +24,8 @@ presents anything amends this file — with a Sync Impact Report and a version b
 than restating the rules in its own plan. The constitution
 ([`constitution.md`](./constitution.md)) outranks it.
 
-**Version**: 1.1.0 | **Ratified**: 2026-08-01 (specs/004) | **Last amended**: 2026-08-03
-(specs/005)
+**Version**: 1.2.0 | **Ratified**: 2026-08-01 (specs/004) | **Last amended**: 2026-08-04
+(specs/008)
 
 ## The rules
 
@@ -45,6 +45,7 @@ Each is written to be answerable yes/no when reviewing a panel.
 | P10 | Over-long identities truncate with `…`, at a bound the panel states per column so one value cannot widen a table without limit. |
 | P11 | Hashrates, shares, difficulties, durations, ages and the unavailable mark come from `internal/render/format.go`. Building them inline in a panel is the defect. |
 | P12 | `stream` follows P4–P7 and P10 in plain text; it has no rules (P13) because it is meant for pipes and greps. `json` is a data contract and follows none of this. |
+| P14 | Colour encodes **state**, never decoration or category. A value gets colour only when there is a judgement to carry — a node not mining, a rejected share, an idle worker, where a pool lives. Green is healthy, amber is degraded, red is broken, blue is a fact that is neither, dim is supporting detail or an unproven claim. Anything colour says, the text must say too: stripping the escapes may not remove information (Constitution: never rely on colour alone). A calm state is uncoloured — painting every healthy value green leaves nothing for the unhealthy one to stand out against. |
 | P13 | TUI tables are grids, drawn by `internal/render/table.go`: a dimmed `│` between adjacent columns, a dimmed `─`/`┼` rule under the heads, one space of gutter on each side of a rule. A cell with nothing to show carries the unavailable mark or a dimmed `·` placeholder as wide as the values beside it — never blank space inside the grid. |
 
 ## Amendment history
@@ -52,6 +53,7 @@ Each is written to be answerable yes/no when reviewing a panel.
 | Version | Date | Spec | Change |
 |---|---|---|---|
 | 1.0.0 | 2026-08-01 | [004-tab-presentation-standard](../../specs/004-tab-presentation-standard/spec.md) | Ratified P1–P12, written from the Monero tab's existing grammar and applied to the Bitcoin tab. P7 carried an exception: the Monero tab kept `n/a` in its CPU columns, because 004-FR-001 froze that tab byte-for-byte. |
+| 1.2.0 | 2026-08-04 | [008-semantic-color](../../specs/008-semantic-color/spec.md) | P14 added: what colour is allowed to mean, and the requirement that it never be the only channel carrying it. |
 | 1.1.0 | 2026-08-03 | [005-table-grid](../../specs/005-table-grid/spec.md) | P13 added (ruled grids). P4 extended: columns size themselves to content. P1 extended to cover a table's first column. P7's exception removed — 005 lifted the freeze that was its only justification, so `n/a` became `—` in the Monero tab and in `stream`. |
 
 ## Terms
@@ -60,4 +62,5 @@ Each is written to be answerable yes/no when reviewing a panel.
 - **Headline metric**: one ` · `-separated figure on a header line.
 - **Column head**: the upper-case name of a table column, carrying the averaging window when there is one.
 - **Unavailable mark**: `—`, the glyph standing for "this source does not report it".
+- **State colour**: green healthy, amber degraded, red broken, blue neutral-but-notable, dim supporting or unproven.
 - **Rule**: the dimmed line separating a table's columns from each other and its heads from its rows.
