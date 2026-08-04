@@ -37,15 +37,30 @@ kos:
 
 # Keyless cosign signatures (needs OIDC id-token in CI).
 signs:
+  # cosign 3.x emits one Sigstore bundle — signature, certificate and
+  # transparency-log entry together — instead of separate .sig/.pem files, and
+  # refuses to sign at all without --bundle ("must specify --bundle with
+  # --new-bundle-format"). The old --output-signature/--output-certificate flags
+  # are deprecated and ignored.
+  #
+  # GoReleaser has no "bundle" field, so the bundle is declared as this signing
+  # step's `signature` artifact: that is simply the path GoReleaser tracks and
+  # uploads, and the name it carries is the one below. There is no separate
+  # certificate artifact any more because the bundle already contains it.
+  #
+  # Verify a release with:
+  #   cosign verify-blob \
+  #     --bundle minepulse_<version>_checksums.txt.bundle \
+  #     --certificate-identity-regexp 'https://github.com/docked-titan-foundation/minepulse/.*' \
+  #     --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  #     minepulse_<version>_checksums.txt
   - cmd: cosign
     args:
       - sign-blob
       - "--yes"
-      - "--output-signature=${signature}"
-      - "--output-certificate=${certificate}"
+      - "--bundle=${signature}"
       - "${artifact}"
-    signature: "${artifact}.sig"
-    certificate: "${artifact}.pem"
+    signature: "${artifact}.bundle"
     artifacts: checksum
     output: true
 
