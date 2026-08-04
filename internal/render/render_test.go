@@ -37,6 +37,12 @@ func sampleSnapshot() *model.Snapshot {
 			},
 		},
 		Pool: &model.PoolStats{ReportedHashrate: 662, AmountDueXMR: 0.00312, AmountPaidXMR: 0.184},
+		Endpoint: &model.PoolEndpoint{
+			URL: "pool.supportxmr.com:443", IP: "116.202.180.221",
+			Brand: "SupportXMR", Mode: model.ModeShared,
+			Locality: model.LocalityExternal, Basis: "public address, no cluster object matches",
+			Diverged: true,
+		},
 	}
 	s.Summarize()
 	return s
@@ -153,8 +159,54 @@ func TestSparkline(t *testing.T) {
 	}
 }
 
-func TestGaugeUnavailable(t *testing.T) {
-	if got := gauge("x", -1, 10); !strings.Contains(got, "n/a") {
-		t.Errorf("gauge(-1) = %q, want n/a", got)
+// The bar's thresholds are what the cluster gauge's were, and its no-metrics
+// case is the unavailable mark — an empty trough would read as "0% free", which
+// is a much more alarming claim than "we could not measure it" (006-FR-006).
+func TestCPUBar(t *testing.T) {
+	for _, tc := range []struct {
+		pct   float64
+		want  string
+		style string
+	}{
+		{-1, unavailable, ""},
+		{0, "░░░░░░░░ 0%", "bad"},
+		// A node with headroom left never draws an empty trough, however little:
+		// that is the picture a saturated node paints, and they must differ.
+		{10, "█░░░░░░░ 10%", "bad"},
+		{12.5, "█░░░░░░░ 12%", "bad"},
+		{50, "████░░░░ 50%", "good"},
+		{100, "████████ 100%", "good"},
+		{150, "████████ 150%", "good"}, // never overflows its cell
+	} {
+		if got := stripANSI(cpuBar(tc.pct, 8)); got != tc.want {
+			t.Errorf("cpuBar(%v) = %q, want %q", tc.pct, got, tc.want)
+		}
+	}
+	// Color tracks the same thresholds the gauge used; compare the styled
+	// output rather than the plain text, since that is where it lives.
+	if cpuBar(10, 8) == cpuBar(50, 8) {
+		t.Error("a starved node and an idle one must not render identically")
+	}
+}
+
+// Every field of the identity line degrades on its own, so a pool minepulse only
+// half-recognizes still produces a line rather than nothing (007-FR-001).
+func TestPoolLine(t *testing.T) {
+	full := &model.PoolEndpoint{
+		URL: "mining-pool.bitcoin.svc:3333", IP: "10.43.7.12",
+		Brand: "public-pool", Mode: model.ModeSolo, Locality: model.LocalityInternal,
+	}
+	if got, want := PoolLine(full), "[internal] mining-pool.bitcoin.svc:3333 - public-pool - solo - 10.43.7.12"; got != want {
+		t.Errorf("PoolLine =\n%s\nwant\n%s", got, want)
+	}
+
+	// Nothing known but the address: four marks, still a line.
+	bare := &model.PoolEndpoint{URL: "10.43.7.12:3333", Locality: model.LocalityUnknown, Mode: model.ModeUnknown}
+	if got, want := PoolLine(bare), "[—] 10.43.7.12:3333 - — - — - —"; got != want {
+		t.Errorf("PoolLine(bare) = %q, want %q", got, want)
+	}
+
+	if got := PoolLine(nil); got != "" {
+		t.Errorf("PoolLine(nil) = %q, want empty", got)
 	}
 }

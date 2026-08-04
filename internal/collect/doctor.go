@@ -50,7 +50,7 @@ func RunDoctor(ctx context.Context, cfg config.Config) (*diag.Report, error) {
 
 	if _, e := k.nodeCPUUsed(ctx); e != nil {
 		rep.Add(diag.Check{Name: "CPU metrics", Status: diag.StatusWarn, Detail: "metrics API unavailable",
-			Remedy: "Install metrics-server; CPU columns read n/a without it."})
+			Remedy: "Install metrics-server; the CPU columns read as unavailable without it."})
 	} else {
 		rep.Add(diag.Check{Name: "CPU metrics", Status: diag.StatusOK, Detail: "metrics-server responding"})
 	}

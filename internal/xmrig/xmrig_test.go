@@ -49,6 +49,12 @@ func TestParseSummaryAndMap(t *testing.T) {
 	if !ms.Connected {
 		t.Error("expected Connected (pool set, uptime>0)")
 	}
+	// The pool's resolved address comes from the miner, not from minepulse:
+	// minepulse usually runs outside the cluster and often cannot resolve
+	// in-cluster DNS at all (007-FR-009).
+	if ms.PoolIP != "116.202.180.221" {
+		t.Errorf("pool IP = %q, want the address the miner resolved", ms.PoolIP)
+	}
 	if ms.PingMs != 27 {
 		t.Errorf("ping = %d, want 27", ms.PingMs)
 	}

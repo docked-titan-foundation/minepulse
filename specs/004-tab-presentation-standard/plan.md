@@ -38,23 +38,15 @@ single-width glyphs only, and colour never the sole carrier of meaning
 
 ## The standard
 
-The rule set FR-002 requires. Each rule cites the requirement it satisfies and is written to
-be answerable yes/no when reviewing a panel.
+This feature ratified the rule set FR-002 requires. It has since been extracted to
+[`.specify/memory/presentation-standard.md`](../../.specify/memory/presentation-standard.md)
+and amended by [005-table-grid](../005-table-grid/plan.md) — a living standard cannot keep
+living inside a finished feature's plan, where a later reader finds it half-true.
 
-| # | Rule | From |
-|---|---|---|
-| P1 | Panel content is flush left. The box's padding is the only indent; sub-lines never indent relative to their panel header. | FR-003 |
-| P2 | A panel opens with `<bold role label>  <metric> · <metric> · …`, most important metric first, each figure labelled as the Monero header labels its own (`42✓/2✗ shares`, `miner 5000m`). A figure the source does not report is **omitted** from the list, not rendered as `—`: a bare dash says nothing in prose, while in a table cell it holds the column open. The headline hashrate is the exception — it is the panel's primary metric and appears even when unavailable. When a panel has no metrics at all, the label stands alone. | FR-004, FR-009 |
-| P3 | Identity and provenance (namespace/pod, node, state, uptime, stats source) go on a dimmed context line under the header, never mixed into the metrics. The provenance segment turns the warning colour when the numbers are stale or absent, and that fact is stated **once** — the header never repeats it. | FR-005, FR-010 |
-| P4 | Column heads are upper-case. Identity columns left-aligned, numeric columns right-aligned. | FR-006 |
-| P5 | An averaged hashrate column names its window: `HASH/60s`, `HASH/1m`. An instantaneous figure is `HASH` — it never borrows a window. | FR-007 |
-| P6 | Shares are `N✓/M✗` everywhere — headline and table. When the source does not report rejects, `N✓` alone; never `N✓/0✗`. | FR-008 |
-| P7 | Unavailable is `—` on the Bitcoin tab. **Exception**: the Monero tab keeps `n/a` in its CPU columns, because FR-001 outranks uniformity. | FR-009 |
-| P8 | A problem is `! text` in the warning colour; a remedy is `→ text` dimmed. Neither looks like a metric line. | FR-010 |
-| P9 | Panels are separated by one blank line — the Monero tab's section separation. | FR-011 |
-| P10 | Over-long identities truncate with `…`, as node names already do. | FR-012 |
-| P11 | Hashrates, shares, difficulties, durations, ages and the unavailable mark come from `internal/render`'s shared helpers. Building them inline in a panel is the defect. | FR-013 |
-| P12 | `stream` follows P4–P7 and P10 in plain text. `json` is a data contract and follows none of this. | FR-014 |
+**Check a new panel against that document, not this section.** What it held when this feature
+shipped (standard v1.0.0): P1–P12, with P7 carrying one exception — the Monero tab kept `n/a`
+in its CPU columns, because FR-001 froze it. Both the freeze and the exception are gone; the
+amendment history in the standard records when and why.
 
 ### Applying it to the Bitcoin tab
 
@@ -101,7 +93,8 @@ ckpool  on orion · ns/pod · Running · logs ckpool  480.00 TH/s (1m) · 2 work
 
 ```text
 specs/004-tab-presentation-standard/
-├── plan.md              # This file — carries the standard itself
+├── plan.md              # This file — ratified the standard, now extracted to
+│                        #   .specify/memory/presentation-standard.md
 ├── spec.md              # Requirements
 ├── checklists/
 │   └── requirements.md  # Spec quality checklist
@@ -109,8 +102,8 @@ specs/004-tab-presentation-standard/
 ```
 
 No `research.md`, `data-model.md` or `contracts/`: nothing external is being learned, no
-model type changes, and the observable contract is the standard table above plus the
-untouched `json` schema.
+model type changes, and the observable contract is the standard plus the untouched `json`
+schema.
 
 ### Source Code (repository root)
 
@@ -135,3 +128,7 @@ rather than aspirational.
 |---|---|---|
 | Constitution V calls the output modes stable, and this reshapes the `stream` Bitcoin block (column heads, share format) | The block is days old, shipped in the same release train as the feature itself, and inconsistency is cheaper to fix now than after it has consumers | Freezing the block as-is (rejected — it would contradict P12 permanently and leave two share formats in one output); versioning the stream format (rejected — out of proportion for a human-readable mode whose `json` sibling is the actual contract) |
 | The standard records an inconsistency (`n/a` vs `—`) instead of fixing it | FR-001: the operator ranked "the Monero tab does not move" above uniformity | Normalising both tabs (rejected — explicitly declined); leaving it unmentioned (rejected — an undocumented exception is how the drift started) |
+
+**Resolved by [005](../005-table-grid/plan.md)**: both deviations above were consequences of
+the FR-001 freeze. 005 lifted it, normalised the mark and removed the exception, so neither
+survives into the current standard.

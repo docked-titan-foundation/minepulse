@@ -14,6 +14,13 @@ import (
 func Stream(w io.Writer, s *model.Snapshot) {
 	c := s.Cluster
 	fmt.Fprintf(w, "── minepulse %s ──\n", s.Timestamp.Format("15:04:05"))
+	if e := s.Endpoint; e != nil {
+		div := ""
+		if e.Diverged {
+			div = "  ! miners disagree on the pool"
+		}
+		fmt.Fprintf(w, "%s%s\n", PoolLine(e), div)
+	}
 	fmt.Fprintf(w, "cluster: %d/%d mining · %s · shares %d✓/%d✗ · miner CPU %dm · node free %s\n",
 		c.NodesMining, c.NodesTotal, Hashrate(c.TotalHashrate),
 		c.AcceptedShares, c.RejectedShares, c.MinerCPUMilli, Pct(c.NodeCPUFreePct))
@@ -90,6 +97,9 @@ func streamBitcoin(w io.Writer, v *model.BitcoinView) {
 		if p.Stale {
 			src += ", stale " + Ago(p.AsOf)
 		}
+		if e := p.Endpoint; e != nil {
+			fmt.Fprintf(w, "bitcoin: %s\n", PoolLine(e))
+		}
 		fmt.Fprintf(w, "bitcoin: %s (%s) · %s/%s · %s %s\n",
 			p.Impl, src, p.Namespace, p.Pod, state, Dur(p.Uptime))
 
@@ -123,7 +133,7 @@ func streamBitcoin(w io.Writer, v *model.BitcoinView) {
 			} else {
 				fmt.Fprintf(tw, "  ADDRESS\t%s\tWORKERS\tSHARES\tBEST\tLAST SHARE\n", hash)
 				for _, m := range p.Miners {
-					workers := "—"
+					workers := unavailable
 					if m.Workers >= 0 {
 						workers = fmt.Sprintf("%d", m.Workers)
 					}
@@ -146,14 +156,14 @@ func streamBitcoin(w io.Writer, v *model.BitcoinView) {
 
 func minerCPU(n model.NodeStatus) string {
 	if n.CPU == nil {
-		return "n/a"
+		return unavailable
 	}
 	return fmt.Sprintf("%dm", n.CPU.MinerMilli)
 }
 
 func nodeFree(n model.NodeStatus) string {
 	if n.CPU == nil {
-		return "n/a"
+		return unavailable
 	}
 	return Pct(n.CPU.FreePct)
 }
@@ -162,5 +172,5 @@ func note(n model.NodeStatus) string {
 	if n.Note != "" {
 		return n.Note
 	}
-	return "—"
+	return unavailable
 }

@@ -4,7 +4,14 @@
 
 **Created**: 2026-08-01
 
-**Status**: Draft
+**Status**: Shipped. The rules this feature ratified now live in
+[`.specify/memory/presentation-standard.md`](../../.specify/memory/presentation-standard.md);
+that document, not this one, is what a new panel is checked against.
+
+> **Partly superseded.** User Story 2, FR-001 and SC-002 froze the Monero tab for the duration
+> of *this* feature. [005-table-grid](../005-table-grid/spec.md) lifted that freeze at the
+> operator's request. They are recorded below as they shipped, each marked with what replaced
+> it; everything else in this spec still holds.
 
 **Input**: User description: "It's showing TH and workers being added, but we should have a standard about how we present data in each tab." Follow-up decision: the Monero tab is the reference and does not change; the Bitcoin tab conforms to it.
 
@@ -35,7 +42,12 @@ on both.
 
 ---
 
-### User Story 2 - The Monero tab does not move (Priority: P1)
+### User Story 2 - The Monero tab does not move (Priority: P1) — SUPERSEDED by 005
+
+> Lifted by [005-table-grid](../005-table-grid/spec.md): the operator asked for better table
+> organisation, and the Monero tab holds the primary table. The tab is still pinned by a
+> byte-equality test — to its new shape — so it cannot move *unintentionally*. What follows is
+> the requirement as it shipped in this feature.
 
 The operator's existing muscle memory, screenshots and terminal width all keep working: the
 Monero tab renders exactly as it does today.
@@ -82,7 +94,7 @@ string building.
 
 ### Functional Requirements
 
-- **FR-001**: The Monero tab's rendered output MUST NOT change as a result of this feature.
+- **FR-001**: The Monero tab's rendered output MUST NOT change as a result of this feature. *(Held. Superseded by 005-FR-008, which re-pins the tab to its new shape rather than unpinning it.)*
 - **FR-002**: A written presentation standard MUST exist, stating each rule concretely enough that a panel can be checked against it.
 - **FR-003**: Panel content MUST be flush left; the box's own padding is the only indentation. Sub-lines MUST NOT be indented relative to their panel's header.
 - **FR-004**: Each panel MUST open with a header line of a bold role label followed by ` · `-separated headline metrics, ordered most important first — the grammar the Monero `cluster` and `pool` lines already use.
@@ -90,7 +102,7 @@ string building.
 - **FR-006**: Table column heads MUST be upper-case; identity columns left-aligned, numeric columns right-aligned.
 - **FR-007**: A column of averaged hashrates MUST name its window in the column head (`HASH/60s`, `HASH/1m`); an instantaneous figure MUST NOT imply a window it does not have.
 - **FR-008**: Shares MUST render in one format wherever they appear — accepted then rejected, with the same glyphs the Monero tab uses — and MUST omit the rejected half when the source does not report it, rather than showing a fabricated zero.
-- **FR-009**: Unavailable values on the Bitcoin tab MUST use a single mark. The Monero tab's existing `n/a` in its CPU columns is a recorded exception (FR-001 outranks uniformity here).
+- **FR-009**: Unavailable values on the Bitcoin tab MUST use a single mark. The Monero tab's existing `n/a` in its CPU columns is a recorded exception (FR-001 outranks uniformity here). *(The exception fell with FR-001: 005-FR-011 normalised the Monero tab and `stream` to `—`, and standard P7 now admits no exceptions.)*
 - **FR-010**: A problem note MUST be visually distinct from a remedy and from a metric line, and MUST use the same marker and colour the Monero tab uses for warnings.
 - **FR-011**: Panels MUST be separated the same way sections of the Monero tab are separated.
 - **FR-012**: Identity strings too long for their column (worker names, payout addresses) MUST be truncated with the same mark the Monero tab uses for truncated node names.
@@ -109,14 +121,14 @@ string building.
 ### Measurable Outcomes
 
 - **SC-001**: An operator switching tabs finds the same concept in the same shape: every rule in the standard holds on both tabs, or is a recorded exception.
-- **SC-002**: The Monero tab's rendered body is byte-identical before and after, proven by a test.
+- **SC-002**: The Monero tab's rendered body is byte-identical before and after, proven by a test. *(Superseded by 005-SC-005: the test survives, pinning the tab to its post-005 shape.)*
 - **SC-003**: Shares, hashrates and unavailable values have exactly one rendering each across the Bitcoin tab's headline, table and stream output.
 - **SC-004**: No panel builds those strings by hand; each calls the shared helper.
 - **SC-005**: A reviewer can check a new panel against the standard in a single pass, rule by rule.
 
 ## Assumptions
 
-- The Monero tab is the reference because it is the one in daily use; where it is internally inconsistent (`n/a` beside `—`), that inconsistency is documented rather than propagated, and is not fixed here.
+- The Monero tab is the reference because it is the one in daily use; where it is internally inconsistent (`n/a` beside `—`), that inconsistency is documented rather than propagated, and is not fixed here. *(005 fixed it.)*
 - This feature changes presentation only: no new data is collected, no model type changes, and the `json` contract is untouched.
 - Colour and glyph choices remain terminal-safe: single-width marks, no emoji, no reliance on colour alone to carry meaning.
 - Adding trends (a Bitcoin hashrate sparkline) and an uptime column to the Monero table were considered and are out of scope — they change the reference tab.

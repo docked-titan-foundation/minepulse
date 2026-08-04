@@ -29,7 +29,11 @@ rules:
     resources: ["pods"]
     verbs: ["get", "list"]
 ---
-# Cluster-scoped reads: node capacity and node CPU metrics.
+# Cluster-scoped reads: node capacity, node CPU metrics, and the Services and Pod
+# IPs the pool identity line matches a pool address against — that match is what
+# lets it say "internal" about an address in *this* cluster rather than merely
+# guessing from the address range. Denied, the marker degrades to a range guess
+# that names itself as one; the snapshot still renders (Constitution III).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -37,6 +41,9 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["nodes"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["services"]
     verbs: ["get", "list"]
   - apiGroups: ["metrics.k8s.io"]
     resources: ["nodes"]

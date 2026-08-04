@@ -35,16 +35,23 @@ is exercised through `--mock` and a `View()` render test.
 ## Presentation standard (before you write a renderer)
 
 Every panel on every tab follows one grammar — flush left, a bold role label plus
-` · `-separated metrics, identity dimmed beneath, upper-case column heads that name their
-averaging window, one share format, one mark for "unavailable". The rules are P1–P12 in
-[`specs/004-tab-presentation-standard/plan.md`](specs/004-tab-presentation-standard/plan.md),
-and they are enforced by `internal/render/standard_test.go`.
+` · `-separated metrics, identity dimmed beneath, ruled tables with upper-case column heads
+that name their averaging window, one share format, one mark for "unavailable". The rules
+are P1–P13 in
+[`.specify/memory/presentation-standard.md`](.specify/memory/presentation-standard.md), and
+they are enforced by `internal/render/standard_test.go`.
+
+That document is the standard. A feature spec that changes how anything is presented amends
+it — with a version bump and an entry in its amendment history — rather than restating the
+rules in its own plan. (The rules used to live in 004's plan; a living standard inside a
+finished feature's plan goes stale the moment the next feature touches it.)
 
 Format values through the shared helpers in `internal/render/format.go` (`Hashrate`,
-`Shares`, `Difficulty`, `Dur`, `Ago`, `ShortAddress`) rather than building the strings in
-a panel: that is what keeps a new panel consistent by default. The Monero tab is the
-reference and is pinned byte-for-byte by a golden test — changing it is a deliberate change
-with its own spec, not a side effect.
+`Shares`, `Difficulty`, `Dur`, `Ago`, `ShortAddress`, the `unavailable` mark) and lay tables
+out with `internal/render/table.go` rather than building either in a panel: that is what
+keeps a new panel consistent by default. The Monero tab is the reference and is pinned
+byte-for-byte by a golden test — changing it is a deliberate change with its own spec, not a
+side effect.
 
 ## Conventional Commits
 

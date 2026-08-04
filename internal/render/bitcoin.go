@@ -41,6 +41,15 @@ func bitcoinBody(v *model.BitcoinView) string {
 func bitcoinPool(p *model.BitcoinPool) string {
 	var b strings.Builder
 
+	// Identity first: one line cannot describe two pools, so each panel carries
+	// its own (007-FR-008).
+	if e := p.Endpoint; e != nil {
+		b.WriteString(headSt.Render(PoolLine(e)) + "\n")
+		if e.Basis != "" {
+			b.WriteString(dimStyle.Render(e.Basis) + "\n")
+		}
+	}
+
 	// P2: header line is the label plus the metrics, most important first.
 	if s := p.Stats; s != nil {
 		fmt.Fprintf(&b, "%s  %s\n", headSt.Render(string(p.Impl)), headlineMetrics(s))
@@ -85,7 +94,7 @@ func headlineMetrics(s *model.BitcoinStats) string {
 	if s.HashrateWindow != "" && s.HashrateWindow != "now" && s.HashrateWindow != "pool" {
 		parts[0] += " (" + s.HashrateWindow + ")"
 	}
-	if w := workerSummary(s); w != "workers —" {
+	if w := workerSummary(s); w != noWorkers {
 		parts = append(parts, w)
 	}
 	if s.Accepted >= 0 || s.Rejected >= 0 {
@@ -112,7 +121,7 @@ func contextLine(p *model.BitcoinPool) string {
 	}
 	return fmt.Sprintf("%s %s %s %s %s",
 		dimStyle.Render(p.Namespace+"/"+p.Pod),
-		dimStyle.Render("on "+orDash(p.Node)),
+		dimStyle.Render("on "+orMark(p.Node)),
 		dimStyle.Render("·"),
 		state+dimStyle.Render(" "+Dur(p.Uptime)),
 		source)
@@ -133,6 +142,10 @@ func sourceLabel(p *model.BitcoinPool) string {
 	}
 }
 
+// noWorkers is what workerSummary returns when the source counts neither users
+// nor workers — a sentinel the headline drops rather than printing (P2).
+const noWorkers = "workers " + unavailable
+
 func workerSummary(s *model.BitcoinStats) string {
 	parts := make([]string, 0, 3)
 	if s.Users >= 0 {
@@ -146,7 +159,7 @@ func workerSummary(s *model.BitcoinStats) string {
 		parts = append(parts, w)
 	}
 	if len(parts) == 0 {
-		return "workers —"
+		return noWorkers
 	}
 	return strings.Join(parts, " · ")
 }
@@ -179,36 +192,49 @@ func chainSummary(s *model.BitcoinStats) string {
 	return strings.Join(parts, " · ")
 }
 
+// workerColMax bounds the worker-name column, as nodeColMax bounds the Monero
+// tab's; payout addresses are already shortened by ShortAddress.
+const workerColMax = 20
+
 // minerTable lists per-miner rows at whichever granularity the source reached:
 // devices for public-pool, payout addresses for ckpool. Identity columns left,
-// numbers right, hashrate heads naming their window (P4/P5).
+// numbers right, hashrate heads naming their window (P4/P5), laid out by the
+// shared grid so both tabs' tables are ruled the same way (P13).
 func minerTable(p *model.BitcoinPool) string {
-	var b strings.Builder
 	hash := hashHead(p.Stats)
 
 	if p.Detail == model.DetailDevice {
-		fmt.Fprintf(&b, "%-16s %12s %10s %10s %11s\n",
-			"WORKER", hash, "BEST", "UP", "LAST SHARE")
+		t := newTable(
+			column{"WORKER", alignLeft},
+			column{hash, alignRight},
+			column{"BEST", alignRight},
+			column{"UP", alignRight},
+			column{"LAST SHARE", alignRight},
+		)
 		for _, m := range p.Miners {
-			fmt.Fprintf(&b, "%-16s %12s %10s %10s %11s\n",
-				truncate(m.Name, 16), Hashrate(m.Hashrate), Difficulty(m.BestDifficulty),
-				Dur(durSince(m.StartTime)), Ago(m.LastSeen))
+			t.add(truncate(m.Name, workerColMax), Hashrate(m.Hashrate),
+				Difficulty(m.BestDifficulty), Dur(durSince(m.StartTime)), Ago(m.LastSeen))
 		}
-		return b.String()
+		return t.render()
 	}
 
-	fmt.Fprintf(&b, "%-16s %12s %8s %12s %10s %11s\n",
-		"ADDRESS", hash, "WORKERS", "SHARES", "BEST", "LAST SHARE")
+	t := newTable(
+		column{"ADDRESS", alignLeft},
+		column{hash, alignRight},
+		column{"WORKERS", alignRight},
+		column{"SHARES", alignRight},
+		column{"BEST", alignRight},
+		column{"LAST SHARE", alignRight},
+	)
 	for _, m := range p.Miners {
-		workers := "—"
+		workers := unavailable
 		if m.Workers >= 0 {
 			workers = fmt.Sprintf("%d", m.Workers)
 		}
-		fmt.Fprintf(&b, "%-16s %12s %8s %12s %10s %11s\n",
-			ShortAddress(m.Name), Hashrate(m.Hashrate), workers,
+		t.add(ShortAddress(m.Name), Hashrate(m.Hashrate), workers,
 			Shares(m.Shares, model.Unknown), Difficulty(m.BestDifficulty), Ago(m.LastSeen))
 	}
-	return b.String()
+	return t.render()
 }
 
 // hashHead names the averaging window in the column head, or leaves it off when
@@ -219,11 +245,4 @@ func hashHead(s *model.BitcoinStats) string {
 		return "HASH"
 	}
 	return "HASH/" + s.HashrateWindow
-}
-
-func orDash(s string) string {
-	if s == "" {
-		return "—"
-	}
-	return s
 }

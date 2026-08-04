@@ -3,6 +3,7 @@ package render
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -141,7 +142,6 @@ var (
 	goodSt    = lipgloss.NewStyle().Foreground(lipgloss.Color("42"))
 	warnSt    = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
 	badSt     = lipgloss.NewStyle().Foreground(lipgloss.Color("203"))
-	sparkSt   = lipgloss.NewStyle().Foreground(xmrOrange)
 	tabOnSt   = lipgloss.NewStyle().Foreground(lipgloss.Color("252")).Bold(true)
 	btcOrange = lipgloss.Color("#f7931a")
 	xmrIconSt = lipgloss.NewStyle().Foreground(xmrOrange)
@@ -190,7 +190,7 @@ func (m tuiModel) title() string {
 	if m.paused {
 		status = warnSt.Render(" [paused]")
 	}
-	upd := "—"
+	upd := unavailable
 	if !m.updated.IsZero() {
 		upd = m.updated.Format("15:04:05")
 	}
@@ -233,27 +233,39 @@ func (m tuiModel) body() string {
 	return b.String() + m.moneroBody()
 }
 
-// moneroBody is the Monero tab: cluster totals, gauge, nodes, pool, warnings.
+// moneroBody is the Monero tab: cluster totals, nodes, pool, warnings.
 func (m tuiModel) moneroBody() string {
 	var b strings.Builder
 	s := m.snap
 	c := s.Cluster
 
-	// Header: cluster totals + free-CPU gauge.
-	fmt.Fprintf(&b, "%s  %s mining · %s · %s shares✓ · miner %s\n",
+	// Identity: where the work is going, before anything about how much of it
+	// there is (specs/007). Divergence is a warning, not a footnote: it is the
+	// case where this one line cannot describe every miner.
+	if e := s.Endpoint; e != nil {
+		b.WriteString(headSt.Render(PoolLine(e)))
+		if e.Diverged {
+			b.WriteString(warnSt.Render("  ! miners disagree on the pool"))
+		}
+		if e.Basis != "" {
+			b.WriteString("\n" + dimStyle.Render(e.Basis))
+		}
+		b.WriteString("\n\n")
+	}
+
+	// Header: cluster totals. Free CPU is a figure here rather than a gauge —
+	// the bar that answers "which node is tight" belongs on the rows, where the
+	// comparison is (specs/006).
+	fmt.Fprintf(&b, "%s  %s mining · %s · %s shares✓ · miner %s · node free %s\n\n",
 		headSt.Render("cluster"),
 		fmt.Sprintf("%d/%d", c.NodesMining, c.NodesTotal),
 		Hashrate(c.TotalHashrate),
 		fmt.Sprintf("%d", c.AcceptedShares),
-		fmt.Sprintf("%dm", c.MinerCPUMilli))
-	b.WriteString("\n" + gauge("node CPU free", c.NodeCPUFreePct, 24) + "\n\n")
+		fmt.Sprintf("%dm", c.MinerCPUMilli),
+		Pct(c.NodeCPUFreePct))
 
 	// Node table.
-	fmt.Fprintf(&b, "%-12s %-14s %11s %6s %10s %8s %6s  %-14s %s\n",
-		"NODE", "STATE", "HASH/60s", "THR", "SHARES", "MINER", "FREE", "CPU-FREE ~2m", "POOL")
-	for i := range s.Nodes {
-		b.WriteString(renderNodeRow(s.Nodes[i]))
-	}
+	b.WriteString(nodeTable(s.Nodes))
 
 	// Pool panel.
 	if s.Pool != nil {
@@ -272,22 +284,48 @@ func (m tuiModel) moneroBody() string {
 	return strings.TrimRight(b.String(), "\n")
 }
 
-func renderNodeRow(n model.NodeStatus) string {
-	state := n.Phase
+// Per-column truncation bounds. They exist so one pathological value — a
+// fully-qualified node name, an unusually verbose phase — cannot widen the whole
+// table; every other column is free to size itself to its content.
+const (
+	nodeColMax  = 20
+	stateColMax = 20
+)
+
+// nodeTable is the Monero tab's node grid.
+func nodeTable(nodes []model.NodeStatus) string {
+	t := newTable(
+		column{"NODE", alignLeft},
+		column{"STATE", alignLeft},
+		column{"HASH/60s", alignRight},
+		column{"THR", alignRight},
+		column{"SHARES", alignRight},
+		column{"MINER", alignRight},
+		column{"NODE CPU FREE", alignLeft},
+		column{"POOL", alignLeft},
+	)
+	for i := range nodes {
+		t.add(nodeRow(nodes[i])...)
+	}
+	return t.render()
+}
+
+func nodeRow(n model.NodeStatus) []string {
+	state := truncate(n.Phase, stateColMax)
 	var stateStyled string
 	switch {
 	case n.Mining != nil && n.Mining.DonateFallback:
 		stateStyled = badSt.Render("DONATE⚠")
 	case n.Mining != nil && n.Mining.Connected:
-		stateStyled = goodSt.Render(truncate(state, 14))
+		stateStyled = goodSt.Render(state)
 	case !isRunning(n):
-		stateStyled = badSt.Render(truncate(state, 14))
+		stateStyled = badSt.Render(state)
 	default:
-		stateStyled = warnSt.Render(truncate(state, 14))
+		stateStyled = warnSt.Render(state)
 	}
 
-	hash, thr, shares := "—", "—", "—"
-	pool := "—"
+	hash, thr, shares := unavailable, unavailable, unavailable
+	pool := unavailable
 	if n.Mining != nil {
 		hash = Hashrate(n.Mining.Hashrate60s)
 		thr = fmt.Sprintf("%d/%d", n.Mining.ThreadsActive, n.Mining.ThreadsTotal)
@@ -297,87 +335,58 @@ func renderNodeRow(n model.NodeStatus) string {
 			pool += dimStyle.Render(" (logs)")
 		}
 	}
-	miner, free, spark := "n/a", "n/a", ""
+	miner, free := unavailable, unavailable
 	if n.CPU != nil {
 		miner = fmt.Sprintf("%dm", n.CPU.MinerMilli)
-		free = Pct(n.CPU.FreePct)
-	}
-	if n.History != nil {
-		spark = sparkSt.Render(pad(Sparkline(n.History.FreePctSeries(), 0, 100, 14), 14))
-	} else {
-		spark = pad("", 14)
+		free = cpuBar(n.CPU.FreePct, cpuBarWidth)
 	}
 
-	// NODE STATE HASH THR SHARES MINER FREE SPARK POOL
-	return fmt.Sprintf("%-12s %-14s %11s %6s %10s %8s %6s  %s %s\n",
-		truncate(n.Node, 12), padStyled(stateStyled, 14),
-		hash, thr, shares, miner, free, spark, pool)
+	return []string{
+		truncate(n.Node, nodeColMax), stateStyled,
+		hash, thr, shares, miner, free, pool,
+	}
 }
 
 func isRunning(n model.NodeStatus) bool { return n.Phase == "Running" }
 
-// gauge renders a labeled horizontal bar for a 0..100 percentage (or n/a).
-func gauge(label string, pct float64, width int) string {
+// cpuBarWidth is how many cells the trough gets. Eight is enough to rank a
+// handful of nodes by eye, and keeps the column (bar, space, percentage) no
+// wider than its own head.
+const cpuBarWidth = 8
+
+// cpuBar draws a 0..100 percentage as a filled trough with the figure beside
+// it, in the thresholds the cluster gauge used before this bar replaced it:
+// green with headroom, amber when tight, red when the node is starved.
+//
+// The percentage stays next to the bar because color may not be the only thing
+// carrying a reading (Constitution: terminal-safe, no reliance on color alone),
+// and because two bars of similar length are quicker to separate by number than
+// by eye. No metrics at all is the unavailable mark — an empty trough would read
+// as "0% free", which is a very different and much more alarming claim.
+func cpuBar(pct float64, width int) string {
 	if pct < 0 {
-		return dimStyle.Render(fmt.Sprintf("%s: n/a", label))
+		return unavailable
 	}
-	filled := int(pct / 100 * float64(width))
+	// Round rather than truncate, and never let a node with headroom left draw an
+	// empty trough: at 10% free an 8-cell bar truncates to nothing, which is the
+	// same picture a saturated node paints. A sliver is the honest rendering.
+	filled := int(math.Round(pct / 100 * float64(width)))
+	if filled == 0 && pct > 0 {
+		filled = 1
+	}
 	if filled > width {
 		filled = width
 	}
-	bar := strings.Repeat("█", filled) + strings.Repeat("░", width-filled)
 	st := goodSt
 	if pct < 15 {
 		st = badSt
 	} else if pct < 30 {
 		st = warnSt
 	}
-	return fmt.Sprintf("%s %s %s", dimStyle.Render(label), st.Render(bar), st.Render(Pct(pct)))
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", width-filled)
+	return st.Render(bar) + " " + st.Render(Pct(pct))
 }
 
 func footer() string {
 	return "\n" + dimStyle.Render("q quit · p pause · r refresh · m/b coin")
-}
-
-// ── small width helpers (styled strings break %-Ns padding) ──────────────────
-//
-// All three measure *display columns*, not bytes: a sparkline of six block
-// characters is 18 bytes but occupies six columns, and byte arithmetic on it
-// both misaligns the following column and can slice a rune in half.
-func truncate(s string, n int) string {
-	if lipgloss.Width(s) <= n {
-		return s
-	}
-	if n <= 1 {
-		return string([]rune(s)[:n])
-	}
-	// Take runes until one more would not leave room for the ellipsis.
-	var b strings.Builder
-	w := 0
-	for _, r := range s {
-		rw := lipgloss.Width(string(r))
-		if w+rw > n-1 {
-			break
-		}
-		b.WriteRune(r)
-		w += rw
-	}
-	return b.String() + "…"
-}
-
-func pad(s string, n int) string {
-	w := lipgloss.Width(s)
-	if w >= n {
-		return s
-	}
-	return s + strings.Repeat(" ", n-w)
-}
-
-// padStyled pads based on the plain-text length of an already-styled cell.
-func padStyled(styled string, n int) string {
-	w := lipgloss.Width(styled)
-	if w >= n {
-		return styled
-	}
-	return styled + strings.Repeat(" ", n-w)
 }
