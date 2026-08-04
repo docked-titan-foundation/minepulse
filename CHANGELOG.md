@@ -1,3 +1,23 @@
+# [1.5.0](https://github.com/docked-titan-foundation/minepulse/compare/v1.4.0...v1.5.0) (2026-08-04)
+
+
+### Bug Fixes
+
+* **build:** sign releases with a cosign bundle ([a8703f0](https://github.com/docked-titan-foundation/minepulse/commit/a8703f00818e7e8409365c03a0b95fe8653950df)), closes [#28](https://github.com/docked-titan-foundation/minepulse/issues/28) [#27](https://github.com/docked-titan-foundation/minepulse/issues/27)
+* **ci:** migrate golangci config to v2 and stop shadowing min/max ([a0049b9](https://github.com/docked-titan-foundation/minepulse/commit/a0049b9728e293f193cf2ce89ae5c27fc5b84250)), closes [#21](https://github.com/docked-titan-foundation/minepulse/issues/21) [#22](https://github.com/docked-titan-foundation/minepulse/issues/22)
+
+
+### Features
+
+* **mp:** draw dashboard tables as a ruled grid ([2fe2127](https://github.com/docked-titan-foundation/minepulse/commit/2fe2127d7349f5694b6187e93c9de2612187bec6))
+* **mp:** open each tab with a pool identity line ([f00c730](https://github.com/docked-titan-foundation/minepulse/commit/f00c730532e084d4742336fb6f2bb50c8235d840))
+* **mp:** show free CPU as a bar on every node row ([2f63cdb](https://github.com/docked-titan-foundation/minepulse/commit/2f63cdbfd0d76c859097c7d20207cf26125b41ec))
+
+
+### Reverts
+
+* **release:** drop the 1.5.0 changelog entry for a clean re-cut ([6f6594d](https://github.com/docked-titan-foundation/minepulse/commit/6f6594d87579ea09d50162374c203209eb1dbc95))
+
 # [1.4.0](https://github.com/docked-titan-foundation/minepulse/compare/v1.3.0...v1.4.0) (2026-08-03)
 
 
