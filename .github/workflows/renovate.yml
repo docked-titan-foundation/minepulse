@@ -32,7 +32,7 @@ jobs:
         with:
           client-id: ${{ secrets.RENOVATE_BOT_ID }}
           private-key: ${{ secrets.RENOVATE_BOT_PRIVATE_KEY }}
-      - uses: renovatebot/github-action@v46.2.0
+      - uses: renovatebot/github-action@v46.2.1
         with:
           configurationFile: renovate.json
           token: ${{ steps.token.outputs.token }}
