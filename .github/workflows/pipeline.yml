@@ -50,7 +50,7 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.token.outputs.token }}
       - uses: actions/setup-node@v7
-        with: { node-version: "24" }
+        with: { node-version: "26" }
 
       # Sign the version commit-back with the release bot's GPG key so it shows
       # "Verified" on GitHub, authored as s-release[bot] (mirrors ckpool /
